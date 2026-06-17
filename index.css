@@ -2616,6 +2616,113 @@ footer {
   color: #52525b;
 }
 
+.admin-dashboard-body .customer-main {
+  padding-bottom: 36px;
+}
+
+.admin-control-shell .customer-plan-card button {
+  margin-top: 8px;
+  width: 100%;
+}
+
+.admin-stat-compact-grid {
+  grid-template-columns: repeat(4, 1fr);
+}
+
+.admin-filter-actions {
+  align-items: center;
+  display: flex;
+  gap: 8px;
+}
+
+.compact-select {
+  font-size: 12px;
+  height: 34px;
+  min-width: 150px;
+  padding: 0 9px;
+}
+
+.admin-wide-table {
+  min-width: 1080px;
+}
+
+.admin-wide-table td strong,
+.admin-wide-table td small,
+.customer-table td strong,
+.customer-table td small {
+  display: block;
+}
+
+.admin-wide-table td strong,
+.customer-table td strong {
+  color: #111827;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.admin-wide-table td small,
+.customer-table td small {
+  color: #6b7280;
+  font-size: 11px;
+  margin-top: 3px;
+}
+
+.admin-status-action {
+  height: 28px;
+  padding: 0 10px;
+}
+
+.admin-status-action:disabled {
+  cursor: progress;
+  opacity: 0.7;
+}
+
+.admin-operations-grid {
+  align-items: start;
+  grid-template-columns: 1fr 1fr;
+}
+
+.admin-activity-list {
+  display: grid;
+  gap: 8px;
+}
+
+.admin-activity-item {
+  align-items: center;
+  background: #fbfcff;
+  border: 1px solid #edf0f6;
+  border-radius: 8px;
+  display: grid;
+  gap: 6px;
+  grid-template-columns: 72px 1fr 96px;
+  padding: 9px 10px;
+}
+
+.admin-activity-item span {
+  color: #7c3aed;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.admin-activity-item strong {
+  color: #111827;
+  font-size: 12px;
+  font-weight: 700;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.admin-activity-item small {
+  color: #6b7280;
+  font-size: 11px;
+  text-align: right;
+}
+
+.admin-health-list div {
+  padding: 10px;
+}
+
 .customer-shell.sidebar-collapsed {
   grid-template-columns: 66px 1fr;
 }
@@ -2683,5 +2790,18 @@ footer {
 
   .customer-dashboard-body .form-row {
     grid-template-columns: 1fr;
+  }
+
+  .admin-stat-compact-grid,
+  .admin-operations-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-activity-item {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-activity-item small {
+    text-align: left;
   }
 }

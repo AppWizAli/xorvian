@@ -4,158 +4,199 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Admin Dashboard | Xorvian</title>
-  <meta name="description" content="Xorvian admin dashboard for customers, restaurants, AI agents, subscriptions, workflow configuration, and operations.">
+  <meta name="description" content="Xorvian admin dashboard for customers, restaurants, AI agents, workflows, orders, reservations, and calls.">
   <link rel="stylesheet" href="index.css">
 </head>
-<body class="admin-body">
-  <main class="admin-shell" id="admin-root">
-    <aside class="admin-sidebar">
-      <a href="index.html" class="admin-brand">Xorvian <span>Admin</span></a>
-      <nav class="admin-nav">
-        <a href="#overview" class="active">Dashboard</a>
-        <a href="#customers">Customers</a>
-        <a href="#agents">AI Agents</a>
-        <a href="#workflow">Workflow Template</a>
-        <a href="#billing">Subscriptions</a>
-        <a href="#messages">Messages</a>
-        <a href="#support">Support</a>
+<body class="customer-dashboard-body admin-dashboard-body">
+  <main class="customer-shell admin-control-shell" id="admin-root">
+    <aside class="customer-sidebar" id="admin-sidebar">
+      <div class="customer-sidebar-head">
+        <a href="index.html" class="customer-brand">
+          <span class="customer-brand-mark">X</span>
+          <span class="customer-brand-text">Xorvian Admin</span>
+        </a>
+        <button class="icon-button" id="admin-sidebar-toggle" type="button" aria-label="Collapse sidebar">=</button>
+      </div>
+
+      <nav class="customer-nav" aria-label="Admin dashboard">
+        <button class="customer-nav-item active" type="button" data-admin-view="overview"><span>01</span><strong>Overview</strong></button>
+        <button class="customer-nav-item" type="button" data-admin-view="customers"><span>02</span><strong>Customers</strong></button>
+        <button class="customer-nav-item" type="button" data-admin-view="operations"><span>03</span><strong>Operations</strong></button>
+        <button class="customer-nav-item" type="button" data-admin-view="calls"><span>04</span><strong>Call Logs</strong></button>
+        <button class="customer-nav-item" type="button" data-admin-view="workflow"><span>05</span><strong>Workflow</strong></button>
+        <button class="customer-nav-item" type="button" data-admin-view="system"><span>06</span><strong>System</strong></button>
       </nav>
-      <div class="admin-sidebar-card">
+
+      <div class="customer-plan-card">
         <span>Logged in as</span>
         <strong id="admin-user-email">Admin</strong>
-        <button class="btn btn-secondary" id="admin-logout-btn" type="button">Logout</button>
+        <button class="compact-button" id="admin-logout-btn" type="button">Logout</button>
       </div>
     </aside>
 
-    <section class="admin-main">
-      <header class="admin-topbar">
-        <div>
-          <span class="admin-kicker">Super Admin</span>
-          <h1>Xorvian Operations</h1>
+    <section class="customer-main">
+      <header class="customer-topbar">
+        <div class="customer-page-title">
+          <span id="admin-current-section">Overview</span>
+          <h1>Xorvian Control Center</h1>
         </div>
-        <div class="admin-search">
-          <input type="search" placeholder="Search customers, restaurants, agents...">
-          <a href="signup.html" class="btn btn-primary">Add Customer</a>
+        <div class="customer-top-actions">
+          <span class="api-environment" id="admin-api-environment">Checking API...</span>
+          <input class="customer-search" id="admin-search-input" type="search" placeholder="Search customers, phones, restaurants...">
+          <button class="compact-button ghost" id="admin-refresh-btn" type="button">Refresh</button>
+          <a class="compact-button" href="signup.html">Add Customer</a>
         </div>
       </header>
 
-      <section class="admin-stat-grid" id="overview">
-        <article class="admin-stat-card">
-          <span>Total Customers</span>
-          <strong id="admin-total-customers">0</strong>
-          <small>Registered restaurant accounts</small>
-        </article>
-        <article class="admin-stat-card">
-          <span>Active Users</span>
-          <strong id="admin-active-users">0</strong>
-          <small>Accounts ready for onboarding</small>
-        </article>
-        <article class="admin-stat-card">
-          <span>Monthly Revenue</span>
-          <strong id="admin-monthly-revenue">$0</strong>
-          <small>Estimated from active customers</small>
-        </article>
-        <article class="admin-stat-card">
-          <span>Configured Agents</span>
-          <strong id="admin-configured-agents">0</strong>
-          <small>Voice/workflow setup started</small>
-        </article>
-      </section>
+      <p class="auth-message" id="admin-message" aria-live="polite"></p>
 
-      <section class="admin-grid-two">
-        <article class="admin-card">
-          <div class="admin-card-head">
-            <h2>Revenue Growth</h2>
-            <span>This Year</span>
+      <section class="customer-view active" id="admin-view-overview" data-view-title="Overview">
+        <div class="customer-welcome">
+          <div>
+            <span>Super Admin</span>
+            <h2>Platform Snapshot</h2>
+            <p>Monitor customers, calls, orders, reservations, and workflow readiness from one place.</p>
           </div>
-          <div class="line-chart" aria-label="Revenue growth chart">
-            <span style="height: 24%"></span>
-            <span style="height: 36%"></span>
-            <span style="height: 32%"></span>
-            <span style="height: 46%"></span>
-            <span style="height: 68%"></span>
-            <span style="height: 54%"></span>
-            <span style="height: 72%"></span>
-            <span style="height: 62%"></span>
-            <span style="height: 80%"></span>
-            <span style="height: 70%"></span>
-            <span style="height: 92%"></span>
-            <span style="height: 100%"></span>
+          <div class="setup-pill">
+            <span>System</span>
+            <strong id="admin-system-status">Checking...</strong>
           </div>
-        </article>
-
-        <article class="admin-card">
-          <div class="admin-card-head">
-            <h2>Platform Activity</h2>
-            <span>Live</span>
-          </div>
-          <div class="mini-bars">
-            <div><span style="height: 42%"></span><small>Calls</small></div>
-            <div><span style="height: 58%"></span><small>Orders</small></div>
-            <div><span style="height: 36%"></span><small>Booking</small></div>
-            <div><span style="height: 76%"></span><small>Setup</small></div>
-          </div>
-        </article>
-      </section>
-
-      <section class="admin-card" id="customers">
-        <div class="admin-card-head">
-          <h2>Customers & Restaurants</h2>
-          <span>Latest 25</span>
         </div>
-        <div class="admin-table-wrap">
-          <table class="admin-table">
+
+        <div class="customer-stat-grid admin-stat-compact-grid">
+          <article class="customer-stat-card"><span>Customers</span><strong id="admin-total-customers">0</strong><small>Restaurant accounts</small></article>
+          <article class="customer-stat-card"><span>Active Users</span><strong id="admin-active-users">0</strong><small>Enabled accounts</small></article>
+          <article class="customer-stat-card"><span>Total Calls</span><strong id="admin-total-calls">0</strong><small>Voice interactions</small></article>
+          <article class="customer-stat-card"><span>Orders</span><strong id="admin-total-orders">0</strong><small>Captured by AI</small></article>
+          <article class="customer-stat-card"><span>Reservations</span><strong id="admin-total-reservations">0</strong><small>Booking requests</small></article>
+          <article class="customer-stat-card"><span>Configured Agents</span><strong id="admin-configured-agents">0</strong><small>Voice setup started</small></article>
+          <article class="customer-stat-card"><span>Monthly Revenue</span><strong id="admin-monthly-revenue">$0</strong><small>Estimated MRR</small></article>
+          <article class="customer-stat-card"><span>Pending Profiles</span><strong id="admin-pending-profiles">0</strong><small>Need onboarding</small></article>
+        </div>
+
+        <div class="customer-grid-two">
+          <article class="customer-panel">
+            <div class="panel-head"><h3>Recent Activity</h3><span>Latest records</span></div>
+            <div class="admin-activity-list" id="admin-activity-list">
+              <p class="muted-copy">Loading activity...</p>
+            </div>
+          </article>
+          <article class="customer-panel">
+            <div class="panel-head"><h3>Operational Health</h3><span>Live</span></div>
+            <div class="workflow-list admin-health-list">
+              <div><span>Dynamic config</span><strong id="admin-health-config">n8n_context.php</strong></div>
+              <div><span>Customer matching</span><strong>Twilio number / webhook / restaurant ID</strong></div>
+              <div><span>Data isolation</span><strong>Saved by user_id</strong></div>
+              <div><span>Admin visibility</span><strong>All customers and records</strong></div>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section class="customer-view" id="admin-view-customers" data-view-title="Customers">
+        <div class="panel-head page-panel-head">
+          <div>
+            <h2>Customers</h2>
+            <p>Manage restaurant accounts, onboarding status, Twilio numbers, and workflow readiness.</p>
+          </div>
+          <div class="admin-filter-actions">
+            <select class="form-input compact-select" id="admin-status-filter">
+              <option value="">All statuses</option>
+              <option value="active">Active</option>
+              <option value="disabled">Disabled</option>
+            </select>
+          </div>
+        </div>
+        <div class="customer-table-card">
+          <table class="customer-table admin-wide-table">
             <thead>
               <tr>
                 <th>Customer</th>
                 <th>Restaurant</th>
-                <th>Email</th>
-                <th>Voice Model</th>
-                <th>Webhook Path</th>
+                <th>Contact</th>
+                <th>Twilio</th>
+                <th>Agent</th>
+                <th>Usage</th>
                 <th>Status</th>
+                <th>Action</th>
               </tr>
             </thead>
-            <tbody id="admin-customers-table">
-              <tr><td colspan="6">Loading customers...</td></tr>
-            </tbody>
+            <tbody id="admin-customers-table"><tr><td colspan="8">Loading customers...</td></tr></tbody>
           </table>
         </div>
       </section>
 
-      <section class="admin-grid-two" id="workflow">
-        <article class="admin-card">
-          <div class="admin-card-head">
-            <h2>Workflow Template From JSON</h2>
-            <span>n8n</span>
-          </div>
-          <div class="workflow-list">
-            <div><span>OpenAI</span><strong>gpt-4o-mini, 300 tokens, temp 0.3</strong></div>
-            <div><span>Voice</span><strong>ElevenLabs eleven_flash_v2</strong></div>
-            <div><span>Voice ID</span><strong>ugPTAEnkrnbtfSNMzaSY</strong></div>
-            <div><span>Cloudinary</span><strong>Upload raw MP3, play in TwiML</strong></div>
-            <div><span>Twilio Gather</span><strong>speech, en-US, dynamic webhook host</strong></div>
-          </div>
-        </article>
+      <section class="customer-view" id="admin-view-operations" data-view-title="Operations">
+        <div class="customer-grid-two admin-operations-grid">
+          <article class="customer-panel">
+            <div class="panel-head"><h3>Recent Orders</h3><span>Latest 50</span></div>
+            <div class="customer-table-card">
+              <table class="customer-table">
+                <thead><tr><th>Customer</th><th>Restaurant</th><th>Order</th><th>Status</th><th>Time</th></tr></thead>
+                <tbody id="admin-orders-table"><tr><td colspan="5">Loading orders...</td></tr></tbody>
+              </table>
+            </div>
+          </article>
+          <article class="customer-panel">
+            <div class="panel-head"><h3>Recent Reservations</h3><span>Latest 50</span></div>
+            <div class="customer-table-card">
+              <table class="customer-table">
+                <thead><tr><th>Guest</th><th>Restaurant</th><th>Date</th><th>Guests</th><th>Status</th></tr></thead>
+                <tbody id="admin-reservations-table"><tr><td colspan="5">Loading reservations...</td></tr></tbody>
+              </table>
+            </div>
+          </article>
+        </div>
+      </section>
 
-        <article class="admin-card">
-          <div class="admin-card-head">
-            <h2>Saved Output Fields</h2>
-            <span>Orders / Reservations</span>
+      <section class="customer-view" id="admin-view-calls" data-view-title="Call Logs">
+        <div class="panel-head page-panel-head">
+          <div>
+            <h2>Call Logs</h2>
+            <p>See caller numbers, matched restaurants, call status, and AI outcomes.</p>
           </div>
-          <div class="field-chip-list">
-            <span>Timestamp</span>
-            <span>Restaurant ID</span>
-            <span>Name</span>
-            <span>Phone</span>
-            <span>Address</span>
-            <span>Order</span>
-            <span>Date</span>
-            <span>Time</span>
-            <span>Guests</span>
-            <span>Caller ID</span>
-            <span>Call SID</span>
-          </div>
-        </article>
+        </div>
+        <div class="customer-table-card">
+          <table class="customer-table admin-wide-table">
+            <thead><tr><th>Caller</th><th>Restaurant</th><th>Customer</th><th>Type</th><th>Status</th><th>Summary</th><th>Time</th></tr></thead>
+            <tbody id="admin-calls-table"><tr><td colspan="7">Loading calls...</td></tr></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="customer-view" id="admin-view-workflow" data-view-title="Workflow">
+        <div class="customer-grid-two">
+          <article class="customer-panel">
+            <div class="panel-head"><h3>Default Workflow Template</h3><span>n8n</span></div>
+            <div class="workflow-list" id="admin-workflow-template">
+              <div><span>OpenAI</span><strong>Loading...</strong></div>
+            </div>
+          </article>
+          <article class="customer-panel">
+            <div class="panel-head"><h3>Saved Output Fields</h3><span>Orders / Reservations</span></div>
+            <div class="field-chip-list" id="admin-field-list">
+              <span>Loading fields...</span>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section class="customer-view" id="admin-view-system" data-view-title="System">
+        <div class="customer-grid-two">
+          <article class="customer-panel">
+            <div class="panel-head"><h3>System Checklist</h3><span>Production</span></div>
+            <div class="compact-checklist">
+              <button type="button"><span>01</span> Keep live <strong>config.private.php</strong> on Hostinger only</button>
+              <button type="button"><span>02</span> Give each restaurant a unique Twilio number</button>
+              <button type="button"><span>03</span> Save customer menu and knowledge before enabling calls</button>
+              <button type="button"><span>04</span> Watch n8n execution usage as customers grow</button>
+            </div>
+          </article>
+          <article class="customer-panel">
+            <div class="panel-head"><h3>Admin Notes</h3><span>Read only</span></div>
+            <p class="muted-copy">This console can view all operational data and activate or disable customers. Direct credential and billing changes should stay in Hostinger, Twilio, n8n, and payment provider dashboards.</p>
+          </article>
+        </div>
       </section>
     </section>
   </main>

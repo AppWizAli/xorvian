@@ -943,13 +943,246 @@ Fries
   const adminRoot = document.getElementById('admin-root');
 
   if (adminRoot) {
+    const adminShell = document.querySelector('.admin-control-shell');
+    const adminSidebarToggle = document.getElementById('admin-sidebar-toggle');
     const adminLogoutBtn = document.getElementById('admin-logout-btn');
     const adminUserEmail = document.getElementById('admin-user-email');
+    const adminMessage = document.getElementById('admin-message');
+    const adminCurrentSection = document.getElementById('admin-current-section');
+    const adminApiEnvironment = document.getElementById('admin-api-environment');
+    const adminRefreshBtn = document.getElementById('admin-refresh-btn');
+    const adminSearchInput = document.getElementById('admin-search-input');
+    const adminStatusFilter = document.getElementById('admin-status-filter');
+    const adminViewButtons = document.querySelectorAll('[data-admin-view]');
+    const adminViews = document.querySelectorAll('[id^="admin-view-"]');
     const customersTable = document.getElementById('admin-customers-table');
+    const adminOrdersTable = document.getElementById('admin-orders-table');
+    const adminReservationsTable = document.getElementById('admin-reservations-table');
+    const adminCallsTable = document.getElementById('admin-calls-table');
+    const adminActivityList = document.getElementById('admin-activity-list');
+    const adminWorkflowTemplate = document.getElementById('admin-workflow-template');
+    const adminFieldList = document.getElementById('admin-field-list');
+    let adminPayloadCache = null;
 
     function setText(id, value) {
       const element = document.getElementById(id);
       if (element) element.textContent = value;
+    }
+
+    function showAdminMessage(text, type = '') {
+      if (!adminMessage) return;
+      adminMessage.textContent = text;
+      adminMessage.className = `auth-message ${type}`.trim();
+    }
+
+    function openAdminView(viewName) {
+      adminViews.forEach(view => {
+        const isActive = view.id === `admin-view-${viewName}`;
+        view.classList.toggle('active', isActive);
+        if (isActive && adminCurrentSection) {
+          adminCurrentSection.textContent = view.getAttribute('data-view-title') || viewName;
+        }
+      });
+
+      adminViewButtons.forEach(button => {
+        button.classList.toggle('active', button.getAttribute('data-admin-view') === viewName);
+      });
+    }
+
+    function setAdminTableMessage(tableBody, colspan, message, type = '') {
+      if (!tableBody) return;
+      tableBody.innerHTML = `<tr><td colspan="${colspan}" class="table-message ${type}">${escapeHtml(message)}</td></tr>`;
+    }
+
+    function adminStatusClass(value) {
+      const normalized = String(value || '').toLowerCase();
+      if (['active', 'completed', 'confirmed', 'answered'].includes(normalized)) return 'success';
+      if (['disabled', 'failed', 'cancelled', 'missed'].includes(normalized)) return 'danger';
+      if (['requested', 'new', 'preparing', 'unknown'].includes(normalized)) return 'warning';
+      return 'neutral';
+    }
+
+    function adminPretty(value) {
+      return String(value || '-').replace(/_/g, ' ').replace(/\b\w/g, letter => letter.toUpperCase());
+    }
+
+    function adminStatus(value) {
+      return `<span class="mini-status ${adminStatusClass(value)}">${escapeHtml(adminPretty(value))}</span>`;
+    }
+
+    function adminDate(value) {
+      if (!value) return '-';
+      const date = new Date(String(value).replace(' ', 'T'));
+      if (Number.isNaN(date.getTime())) return String(value);
+      return new Intl.DateTimeFormat(undefined, { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }).format(date);
+    }
+
+    function renderAdminCustomers(customers) {
+      if (!customersTable) return;
+      const query = (adminSearchInput?.value || '').trim().toLowerCase();
+      const status = adminStatusFilter?.value || '';
+      const filtered = customers.filter(customer => {
+        const haystack = [
+          customer.first_name,
+          customer.second_name,
+          customer.email,
+          customer.restaurant_name,
+          customer.business_phone,
+          customer.twilio_phone,
+          customer.city,
+          customer.cuisine_type
+        ].join(' ').toLowerCase();
+        return (!query || haystack.includes(query)) && (!status || customer.status === status);
+      });
+
+      if (!filtered.length) {
+        setAdminTableMessage(customersTable, 8, 'No customers match the current filter.');
+        return;
+      }
+
+      customersTable.innerHTML = filtered.map(customer => {
+        const nextStatus = customer.status === 'active' ? 'disabled' : 'active';
+        const actionLabel = customer.status === 'active' ? 'Disable' : 'Activate';
+        const usage = `${customer.total_calls || 0} calls / ${customer.total_orders || 0} orders / ${customer.total_reservations || 0} bookings`;
+
+        return `
+          <tr>
+            <td>
+              <strong>${escapeHtml(customer.first_name)} ${escapeHtml(customer.second_name)}</strong>
+              <small>ID ${escapeHtml(customer.id)}</small>
+            </td>
+            <td>
+              <strong>${escapeHtml(customer.restaurant_name || 'Profile pending')}</strong>
+              <small>${escapeHtml([customer.city, customer.country].filter(Boolean).join(', ') || customer.cuisine_type || 'No location')}</small>
+            </td>
+            <td>
+              <strong>${escapeHtml(customer.email)}</strong>
+              <small>${escapeHtml(customer.business_phone || 'No business phone')}</small>
+            </td>
+            <td>${escapeHtml(customer.twilio_phone || 'Not set')}</td>
+            <td>
+              <strong>${escapeHtml(customer.voice_model || 'eleven_flash_v2')}</strong>
+              <small>${escapeHtml(customer.n8n_webhook_path || 'Webhook pending')}</small>
+            </td>
+            <td>${escapeHtml(usage)}</td>
+            <td>${adminStatus(customer.status || 'active')}</td>
+            <td><button class="compact-button ghost admin-status-action" type="button" data-customer-id="${escapeHtml(customer.id)}" data-next-status="${escapeHtml(nextStatus)}">${actionLabel}</button></td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function renderAdminOrders(orders) {
+      if (!adminOrdersTable) return;
+      if (!orders.length) {
+        setAdminTableMessage(adminOrdersTable, 5, 'No orders saved yet.');
+        return;
+      }
+      adminOrdersTable.innerHTML = orders.map(order => `
+        <tr>
+          <td>${escapeHtml(order.customer_name || order.account_email || 'Guest')}</td>
+          <td>${escapeHtml(order.restaurant_name || 'Restaurant')}</td>
+          <td class="table-main-cell">${escapeHtml(order.order_items || '-')}</td>
+          <td>${adminStatus(order.order_status || 'new')}</td>
+          <td>${escapeHtml(adminDate(order.created_at))}</td>
+        </tr>
+      `).join('');
+    }
+
+    function renderAdminReservations(reservations) {
+      if (!adminReservationsTable) return;
+      if (!reservations.length) {
+        setAdminTableMessage(adminReservationsTable, 5, 'No reservations saved yet.');
+        return;
+      }
+      adminReservationsTable.innerHTML = reservations.map(reservation => `
+        <tr>
+          <td>${escapeHtml(reservation.guest_name || reservation.account_email || 'Guest')}</td>
+          <td>${escapeHtml(reservation.restaurant_name || 'Restaurant')}</td>
+          <td>${escapeHtml([reservation.reservation_date, reservation.reservation_time].filter(Boolean).join(' ') || '-')}</td>
+          <td>${escapeHtml(reservation.party_size || '-')}</td>
+          <td>${adminStatus(reservation.status || 'requested')}</td>
+        </tr>
+      `).join('');
+    }
+
+    function renderAdminCalls(calls) {
+      if (!adminCallsTable) return;
+      if (!calls.length) {
+        setAdminTableMessage(adminCallsTable, 7, 'No calls logged yet.');
+        return;
+      }
+      adminCallsTable.innerHTML = calls.map(call => `
+        <tr>
+          <td>${escapeHtml(call.caller_phone || '-')}</td>
+          <td>${escapeHtml(call.restaurant_name || 'Restaurant')}</td>
+          <td>${escapeHtml(call.account_email || '-')}</td>
+          <td>${escapeHtml(adminPretty(call.call_type || 'unknown'))}</td>
+          <td>${adminStatus(call.call_status || 'answered')}</td>
+          <td class="table-main-cell">${escapeHtml(call.ai_summary || call.call_sid || '-')}</td>
+          <td>${escapeHtml(adminDate(call.created_at))}</td>
+        </tr>
+      `).join('');
+    }
+
+    function renderAdminActivity(payload) {
+      if (!adminActivityList) return;
+      const activity = [
+        ...(payload.calls || []).slice(0, 4).map(item => ({ type: 'Call', text: item.ai_summary || item.caller_phone || 'Incoming call', time: item.created_at })),
+        ...(payload.orders || []).slice(0, 4).map(item => ({ type: 'Order', text: item.order_items || item.customer_name || 'New order', time: item.created_at })),
+        ...(payload.reservations || []).slice(0, 4).map(item => ({ type: 'Booking', text: item.guest_name || item.reservation_date || 'Reservation request', time: item.created_at }))
+      ].sort((a, b) => new Date(String(b.time).replace(' ', 'T')) - new Date(String(a.time).replace(' ', 'T'))).slice(0, 8);
+
+      if (!activity.length) {
+        adminActivityList.innerHTML = '<p class="muted-copy">No platform activity yet.</p>';
+        return;
+      }
+
+      adminActivityList.innerHTML = activity.map(item => `
+        <div class="admin-activity-item">
+          <span>${escapeHtml(item.type)}</span>
+          <strong>${escapeHtml(item.text)}</strong>
+          <small>${escapeHtml(adminDate(item.time))}</small>
+        </div>
+      `).join('');
+    }
+
+    function renderWorkflowTemplate(template) {
+      if (adminWorkflowTemplate) {
+        adminWorkflowTemplate.innerHTML = `
+          <div><span>OpenAI</span><strong>${escapeHtml(template.openaiModel || 'gpt-4o-mini')}</strong></div>
+          <div><span>Voice Provider</span><strong>${escapeHtml(template.voiceProvider || 'elevenlabs')}</strong></div>
+          <div><span>Voice Model</span><strong>${escapeHtml(template.voiceModel || 'eleven_flash_v2')}</strong></div>
+          <div><span>Voice ID</span><strong>${escapeHtml(template.voiceId || 'ugPTAEnkrnbtfSNMzaSY')}</strong></div>
+          <div><span>Twilio Language</span><strong>${escapeHtml(template.twilioLanguage || 'en-US')}</strong></div>
+          <div><span>Output Format</span><strong>${escapeHtml(template.outputFormat || 'mp3_44100_128')}</strong></div>
+        `;
+      }
+
+      if (adminFieldList) {
+        const fields = [...(template.orderFields || []), ...(template.reservationFields || [])];
+        adminFieldList.innerHTML = [...new Set(fields)].map(field => `<span>${escapeHtml(field)}</span>`).join('');
+      }
+    }
+
+    function renderAdminDashboard(payload) {
+      const summary = payload.summary || {};
+      setText('admin-total-customers', summary.totalCustomers || 0);
+      setText('admin-active-users', summary.activeUsers || 0);
+      setText('admin-monthly-revenue', `$${summary.monthlyRevenue || 0}`);
+      setText('admin-configured-agents', summary.configuredAgents || 0);
+      setText('admin-total-orders', summary.orders || 0);
+      setText('admin-total-reservations', summary.reservations || 0);
+      setText('admin-total-calls', summary.calls || 0);
+      setText('admin-pending-profiles', summary.pendingProfiles || 0);
+      setText('admin-system-status', 'Online');
+
+      renderAdminCustomers(payload.customers || []);
+      renderAdminOrders(payload.orders || []);
+      renderAdminReservations(payload.reservations || []);
+      renderAdminCalls(payload.calls || []);
+      renderAdminActivity(payload);
+      renderWorkflowTemplate(payload.workflowTemplate || {});
     }
 
     async function loadAdminDashboard() {
@@ -968,40 +1201,83 @@ Fries
         if (user && adminUserEmail) adminUserEmail.textContent = user.email;
 
         const payload = await apiRequest('admin_summary.php');
-        const summary = payload.summary || {};
-
-        setText('admin-total-customers', summary.totalCustomers || 0);
-        setText('admin-active-users', summary.activeUsers || 0);
-        setText('admin-monthly-revenue', `$${summary.monthlyRevenue || 0}`);
-        setText('admin-configured-agents', summary.configuredAgents || 0);
-
-        if (customersTable) {
-          const customers = payload.customers || [];
-
-          if (!customers.length) {
-            customersTable.innerHTML = '<tr><td colspan="6">No customers yet.</td></tr>';
-            return;
-          }
-
-          customersTable.innerHTML = customers.map(customer => `
-            <tr>
-              <td>${escapeHtml(customer.first_name)} ${escapeHtml(customer.second_name)}</td>
-              <td>${escapeHtml(customer.restaurant_name || 'Profile pending')}</td>
-              <td>${escapeHtml(customer.email)}</td>
-              <td>${escapeHtml(customer.voice_model || 'eleven_flash_v2')}</td>
-              <td>${escapeHtml(customer.n8n_webhook_path || 'Not set')}</td>
-              <td><span class="status-pill">${escapeHtml(customer.status || 'active')}</span></td>
-            </tr>
-          `).join('');
-        }
+        adminPayloadCache = payload;
+        renderAdminDashboard(payload);
+        showAdminMessage('', '');
       } catch (error) {
         if (String(error.message).includes('Admin access')) {
           window.location.href = 'dashboard.html';
           return;
         }
-        clearAuthSession();
-        window.location.href = 'login.html';
+
+        if (String(error.message).includes('Invalid or expired token') || String(error.message).includes('Missing bearer token')) {
+          clearAuthSession();
+          window.location.href = 'login.html';
+          return;
+        }
+
+        showAdminMessage(error.message, 'error');
       }
+    }
+
+    if (adminApiEnvironment) {
+      const isLiveApi = API_BASE.includes('aliportfolio.org');
+      adminApiEnvironment.textContent = isLiveApi ? 'Live API' : 'Local API';
+      adminApiEnvironment.title = API_BASE;
+    }
+
+    adminViewButtons.forEach(button => {
+      button.addEventListener('click', () => openAdminView(button.getAttribute('data-admin-view')));
+    });
+
+    if (adminSidebarToggle && adminShell) {
+      adminSidebarToggle.addEventListener('click', () => {
+        adminShell.classList.toggle('sidebar-collapsed');
+      });
+    }
+
+    if (adminRefreshBtn) {
+      adminRefreshBtn.addEventListener('click', () => {
+        showAdminMessage('Refreshing admin data...', '');
+        loadAdminDashboard();
+      });
+    }
+
+    if (adminSearchInput) {
+      adminSearchInput.addEventListener('input', () => {
+        renderAdminCustomers(adminPayloadCache?.customers || []);
+      });
+    }
+
+    if (adminStatusFilter) {
+      adminStatusFilter.addEventListener('change', () => {
+        renderAdminCustomers(adminPayloadCache?.customers || []);
+      });
+    }
+
+    if (customersTable) {
+      customersTable.addEventListener('click', async (event) => {
+        const button = event.target.closest('.admin-status-action');
+        if (!button) return;
+
+        try {
+          button.disabled = true;
+          button.textContent = 'Saving...';
+          await apiRequest('admin_customer_status.php', {
+            method: 'POST',
+            body: JSON.stringify({
+              customerId: Number(button.getAttribute('data-customer-id')),
+              status: button.getAttribute('data-next-status')
+            })
+          });
+          showAdminMessage('Customer status updated.', 'success');
+          await loadAdminDashboard();
+        } catch (error) {
+          button.disabled = false;
+          showAdminMessage(error.message, 'error');
+          renderAdminCustomers(adminPayloadCache?.customers || []);
+        }
+      });
     }
 
     if (adminLogoutBtn) {
