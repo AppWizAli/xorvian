@@ -161,7 +161,7 @@
         "url": "https://aliportfolio.org/xorvian/backend/api/n8n_context.php",
         "sendBody": true,
         "specifyBody": "json",
-        "jsonBody": "={{ JSON.stringify({ secret: \"xorvian_n8n_secret\", restaurantId: $json.query?.restaurantId || $json.body?.restaurantId || \"\", webhookPath: $json.query?.webhookPath || $json.body?.webhookPath || \"\", callSid: $json.body?.CallSid || $json.CallSid || \"\", from: $json.body?.From || $json.From || \"\", to: $json.body?.To || $json.To || \"\" }) }}",
+        "jsonBody": "={{ JSON.stringify({ secret: \"xorvian_n8n_secret\", restaurantId: $json.query?.restaurantId || $json.body?.restaurantId || \"\", webhookPath: $json.query?.webhookPath || $json.body?.webhookPath || (($json.webhookUrl || \"\").split(\"/webhook/\")[1] || \"\"), callSid: $json.body?.CallSid || $json.CallSid || \"\", from: $json.body?.From || $json.From || \"\", to: $json.body?.To || $json.To || \"\" }) }}",
         "options": {}
       },
       "type": "n8n-nodes-base.httpRequest",
