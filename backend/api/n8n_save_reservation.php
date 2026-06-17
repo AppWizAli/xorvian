@@ -32,4 +32,23 @@ $stmt->execute([
     ':notes' => 'Call SID: ' . (string)($data['callSid'] ?? ''),
 ]);
 
-json_response(['ok' => true, 'message' => 'Reservation saved.', 'reservationId' => (int)db()->lastInsertId()]);
+$reservationId = (int)db()->lastInsertId();
+$callSid = substr((string)($data['callSid'] ?? ''), 0, 120);
+$callerPhone = substr((string)($data['from'] ?? $reservation['phone'] ?? ''), 0, 40);
+
+if ($callSid !== '' || $callerPhone !== '') {
+    db()->prepare(
+        'INSERT INTO call_logs (
+            user_id, call_sid, caller_phone, call_type, call_status, ai_summary, duration_seconds
+         ) VALUES (
+            :user_id, :call_sid, :caller_phone, "reservation", "completed", :ai_summary, NULL
+         )'
+    )->execute([
+        ':user_id' => $userId,
+        ':call_sid' => $callSid ?: null,
+        ':caller_phone' => $callerPhone ?: null,
+        ':ai_summary' => 'Reservation saved for ' . substr((string)($reservation['date'] ?? 'requested date'), 0, 80),
+    ]);
+}
+
+json_response(['ok' => true, 'message' => 'Reservation saved.', 'reservationId' => $reservationId]);

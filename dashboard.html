@@ -352,13 +352,14 @@ Burger
         <div class="panel-head page-panel-head">
           <div>
             <h2>Orders</h2>
-            <p>AI phone orders will appear here after workflow database saving is connected.</p>
+            <p>AI phone orders saved from the workflow appear here automatically.</p>
           </div>
+          <button class="compact-button" type="button" data-refresh-operational>Refresh</button>
         </div>
         <div class="customer-table-card">
           <table class="customer-table">
             <thead><tr><th>Name</th><th>Phone</th><th>Order</th><th>Status</th><th>Time</th></tr></thead>
-            <tbody><tr><td colspan="5">No orders yet.</td></tr></tbody>
+            <tbody id="orders-table-body"><tr><td colspan="5">Loading orders...</td></tr></tbody>
           </table>
         </div>
       </section>
@@ -369,11 +370,12 @@ Burger
             <h2>Reservations</h2>
             <p>Guest booking requests and confirmed reservations will be listed here.</p>
           </div>
+          <button class="compact-button" type="button" data-refresh-operational>Refresh</button>
         </div>
         <div class="customer-table-card">
           <table class="customer-table">
             <thead><tr><th>Guest</th><th>Phone</th><th>Date</th><th>Time</th><th>Guests</th><th>Status</th></tr></thead>
-            <tbody><tr><td colspan="6">No reservations yet.</td></tr></tbody>
+            <tbody id="reservations-table-body"><tr><td colspan="6">Loading reservations...</td></tr></tbody>
           </table>
         </div>
       </section>
@@ -384,11 +386,12 @@ Burger
             <h2>Call Logs</h2>
             <p>Track caller ID, call SID, transcript summary, and AI outcome.</p>
           </div>
+          <button class="compact-button" type="button" data-refresh-operational>Refresh</button>
         </div>
         <div class="customer-table-card">
           <table class="customer-table">
             <thead><tr><th>Caller</th><th>Type</th><th>Status</th><th>Duration</th><th>Summary</th></tr></thead>
-            <tbody><tr><td colspan="5">No call logs yet.</td></tr></tbody>
+            <tbody id="calls-table-body"><tr><td colspan="5">Loading call logs...</td></tr></tbody>
           </table>
         </div>
       </section>

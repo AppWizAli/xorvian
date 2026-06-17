@@ -2556,6 +2556,55 @@ footer {
   font-weight: 800;
 }
 
+.table-main-cell {
+  max-width: 420px;
+  white-space: normal;
+}
+
+.table-message {
+  color: #6b7280;
+  padding: 14px 12px;
+}
+
+.table-message.error {
+  color: #dc2626;
+}
+
+.mini-status {
+  border: 1px solid transparent;
+  border-radius: 999px;
+  display: inline-flex;
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1;
+  padding: 5px 8px;
+  white-space: nowrap;
+}
+
+.mini-status.success {
+  background: #ecfdf3;
+  border-color: #bbf7d0;
+  color: #047857;
+}
+
+.mini-status.warning {
+  background: #fffbeb;
+  border-color: #fde68a;
+  color: #92400e;
+}
+
+.mini-status.danger {
+  background: #fef2f2;
+  border-color: #fecaca;
+  color: #b91c1c;
+}
+
+.mini-status.neutral {
+  background: #f4f4f5;
+  border-color: #e4e4e7;
+  color: #52525b;
+}
+
 .customer-shell.sidebar-collapsed {
   grid-template-columns: 66px 1fr;
 }

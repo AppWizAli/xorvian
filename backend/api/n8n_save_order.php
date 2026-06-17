@@ -30,4 +30,23 @@ $stmt->execute([
     ':special_notes' => 'Address: ' . (string)($order['address'] ?? '') . ' | Call SID: ' . (string)($data['callSid'] ?? ''),
 ]);
 
-json_response(['ok' => true, 'message' => 'Order saved.', 'orderId' => (int)db()->lastInsertId()]);
+$orderId = (int)db()->lastInsertId();
+$callSid = substr((string)($data['callSid'] ?? ''), 0, 120);
+$callerPhone = substr((string)($data['from'] ?? $order['phone'] ?? ''), 0, 40);
+
+if ($callSid !== '' || $callerPhone !== '') {
+    db()->prepare(
+        'INSERT INTO call_logs (
+            user_id, call_sid, caller_phone, call_type, call_status, ai_summary, duration_seconds
+         ) VALUES (
+            :user_id, :call_sid, :caller_phone, "order", "completed", :ai_summary, NULL
+         )'
+    )->execute([
+        ':user_id' => $userId,
+        ':call_sid' => $callSid ?: null,
+        ':caller_phone' => $callerPhone ?: null,
+        ':ai_summary' => 'Order saved: ' . substr((string)($order['order'] ?? ''), 0, 180),
+    ]);
+}
+
+json_response(['ok' => true, 'message' => 'Order saved.', 'orderId' => $orderId]);

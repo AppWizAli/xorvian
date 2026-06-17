@@ -345,6 +345,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const menuMessage = document.getElementById('menu-message');
     const logoutBtn = document.getElementById('logout-btn');
     const workflowShortcutForm = document.getElementById('workflow-shortcut-form');
+    const ordersTableBody = document.getElementById('orders-table-body');
+    const reservationsTableBody = document.getElementById('reservations-table-body');
+    const callsTableBody = document.getElementById('calls-table-body');
+    const operationalRefreshButtons = document.querySelectorAll('[data-refresh-operational]');
 
     function openDashboardView(viewName) {
       dashboardViews.forEach(view => {
@@ -437,6 +441,155 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
 
+    function setTableMessage(tableBody, colspan, message, type = '') {
+      if (!tableBody) return;
+      tableBody.innerHTML = `<tr><td colspan="${colspan}" class="table-message ${type}">${escapeHtml(message)}</td></tr>`;
+    }
+
+    function prettyStatus(value) {
+      return String(value || 'new')
+        .replace(/_/g, ' ')
+        .replace(/\b\w/g, letter => letter.toUpperCase());
+    }
+
+    function statusClass(value) {
+      const normalized = String(value || '').toLowerCase();
+
+      if (['completed', 'confirmed', 'ready', 'answered'].includes(normalized)) {
+        return 'success';
+      }
+
+      if (['cancelled', 'failed', 'missed'].includes(normalized)) {
+        return 'danger';
+      }
+
+      if (['preparing', 'out_for_delivery', 'requested', 'modified'].includes(normalized)) {
+        return 'warning';
+      }
+
+      return 'neutral';
+    }
+
+    function renderStatus(value) {
+      return `<span class="mini-status ${statusClass(value)}">${escapeHtml(prettyStatus(value))}</span>`;
+    }
+
+    function formatDateTime(value) {
+      if (!value) return '-';
+      const date = new Date(String(value).replace(' ', 'T'));
+
+      if (Number.isNaN(date.getTime())) {
+        return String(value);
+      }
+
+      return new Intl.DateTimeFormat(undefined, {
+        month: 'short',
+        day: 'numeric',
+        hour: 'numeric',
+        minute: '2-digit'
+      }).format(date);
+    }
+
+    function formatDuration(seconds) {
+      const totalSeconds = Number(seconds || 0);
+
+      if (!Number.isFinite(totalSeconds) || totalSeconds <= 0) {
+        return '-';
+      }
+
+      const minutes = Math.floor(totalSeconds / 60);
+      const remainingSeconds = totalSeconds % 60;
+      return minutes ? `${minutes}m ${remainingSeconds}s` : `${remainingSeconds}s`;
+    }
+
+    function renderOrders(orders) {
+      if (!ordersTableBody) return;
+
+      if (!orders.length) {
+        setTableMessage(ordersTableBody, 5, 'No orders yet for this customer account.');
+        return;
+      }
+
+      ordersTableBody.innerHTML = orders.map(order => `
+        <tr>
+          <td>${escapeHtml(order.customer_name || 'Guest')}</td>
+          <td>${escapeHtml(order.customer_phone || '-')}</td>
+          <td class="table-main-cell">${escapeHtml(order.order_items || '-')}</td>
+          <td>${renderStatus(order.order_status)}</td>
+          <td>${escapeHtml(formatDateTime(order.created_at))}</td>
+        </tr>
+      `).join('');
+    }
+
+    function renderReservations(reservations) {
+      if (!reservationsTableBody) return;
+
+      if (!reservations.length) {
+        setTableMessage(reservationsTableBody, 6, 'No reservations yet for this customer account.');
+        return;
+      }
+
+      reservationsTableBody.innerHTML = reservations.map(reservation => `
+        <tr>
+          <td>${escapeHtml(reservation.guest_name || 'Guest')}</td>
+          <td>${escapeHtml(reservation.guest_phone || '-')}</td>
+          <td>${escapeHtml(reservation.reservation_date || '-')}</td>
+          <td>${escapeHtml(reservation.reservation_time || '-')}</td>
+          <td>${escapeHtml(reservation.party_size || '-')}</td>
+          <td>${renderStatus(reservation.status)}</td>
+        </tr>
+      `).join('');
+    }
+
+    function renderCalls(calls) {
+      if (!callsTableBody) return;
+
+      if (!calls.length) {
+        setTableMessage(callsTableBody, 5, 'No call logs yet for this customer account.');
+        return;
+      }
+
+      callsTableBody.innerHTML = calls.map(call => `
+        <tr>
+          <td>${escapeHtml(call.caller_phone || '-')}</td>
+          <td>${escapeHtml(prettyStatus(call.call_type || 'unknown'))}</td>
+          <td>${renderStatus(call.call_status)}</td>
+          <td>${escapeHtml(formatDuration(call.duration_seconds))}</td>
+          <td class="table-main-cell">${escapeHtml(call.ai_summary || call.call_sid || '-')}</td>
+        </tr>
+      `).join('');
+    }
+
+    async function loadOperationalTables() {
+      setTableMessage(ordersTableBody, 5, 'Loading orders...');
+      setTableMessage(reservationsTableBody, 6, 'Loading reservations...');
+      setTableMessage(callsTableBody, 5, 'Loading call logs...');
+
+      const [ordersResult, reservationsResult, callsResult] = await Promise.allSettled([
+        apiRequest('orders.php'),
+        apiRequest('reservations.php'),
+        apiRequest('call_logs.php')
+      ]);
+
+      if (ordersResult.status === 'fulfilled') {
+        renderOrders(ordersResult.value.orders || []);
+      } else {
+        setTableMessage(ordersTableBody, 5, ordersResult.reason.message || 'Could not load orders.', 'error');
+      }
+
+      if (reservationsResult.status === 'fulfilled') {
+        renderReservations(reservationsResult.value.reservations || []);
+      } else {
+        setTableMessage(reservationsTableBody, 6, reservationsResult.reason.message || 'Could not load reservations.', 'error');
+      }
+
+      if (callsResult.status === 'fulfilled') {
+        renderCalls(callsResult.value.calls || []);
+      } else {
+        setTableMessage(callsTableBody, 5, callsResult.reason.message || 'Could not load call logs.', 'error');
+      }
+    }
+
     async function loadDashboard() {
       if (!getAuthToken()) {
         window.location.href = 'login.html';
@@ -461,6 +614,7 @@ document.addEventListener('DOMContentLoaded', () => {
         fillProfile(payload.profile);
         fillAgentSettings(payload.agent, payload.workflow);
         loadMenu();
+        loadOperationalTables();
       } catch (error) {
         clearAuthSession();
         window.location.href = 'login.html';
@@ -732,6 +886,12 @@ Fries
         }
       });
     }
+
+    operationalRefreshButtons.forEach(button => {
+      button.addEventListener('click', () => {
+        loadOperationalTables();
+      });
+    });
 
     if (profileForm) {
       profileForm.addEventListener('submit', async (event) => {
