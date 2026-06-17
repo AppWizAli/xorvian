@@ -8,7 +8,7 @@ if (is_file($privateConfig)) {
     return;
 }
 
-const DB_HOST = 'localhost';
+const DB_HOST = 'CHANGE_ME_DATABASE_HOST';
 const DB_NAME = 'CHANGE_ME_DATABASE_NAME';
 const DB_USER = 'CHANGE_ME_DATABASE_USER';
 const DB_PASS = 'CHANGE_ME_DATABASE_PASSWORD';

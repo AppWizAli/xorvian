@@ -31,6 +31,12 @@ function db(): PDO
         return $pdo;
     }
 
+    foreach ([DB_HOST, DB_NAME, DB_USER, DB_PASS] as $configValue) {
+        if ($configValue === '' || strpos($configValue, 'CHANGE_ME_') === 0) {
+            throw new RuntimeException('Missing database config. Create backend/api/config.private.php on the server with the real Hostinger database credentials.');
+        }
+    }
+
     $dsn = 'mysql:host=' . DB_HOST . ';dbname=' . DB_NAME . ';charset=utf8mb4';
     $pdo = new PDO($dsn, DB_USER, DB_PASS, [
         PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
