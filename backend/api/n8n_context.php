@@ -28,8 +28,9 @@ $params = [];
 $where = [];
 
 if ($toPhone !== '') {
-    $where[] = '(agent_settings.twilio_phone = :to_phone OR restaurant_profiles.business_phone = :to_phone)';
-    $params[':to_phone'] = $toPhone;
+    $where[] = '(agent_settings.twilio_phone = :to_phone_agent OR restaurant_profiles.business_phone = :to_phone_business)';
+    $params[':to_phone_agent'] = $toPhone;
+    $params[':to_phone_business'] = $toPhone;
 }
 
 if ($restaurantId !== '') {
