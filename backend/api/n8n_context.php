@@ -78,15 +78,16 @@ if ($callSid !== '' || $fromPhone !== '') {
     }
 
     if ($existingCallId) {
-        db()->prepare(
-            'UPDATE call_logs
-             SET caller_phone = COALESCE(NULLIF(:caller_phone, ""), caller_phone),
-                 call_status = "answered"
-             WHERE id = :id'
-        )->execute([
-            ':caller_phone' => $fromPhone,
-            ':id' => $existingCallId,
-        ]);
+        $updateSql = 'UPDATE call_logs SET call_status = "answered"';
+        $updateParams = [':id' => $existingCallId];
+
+        if ($fromPhone !== '') {
+            $updateSql .= ', caller_phone = :caller_phone';
+            $updateParams[':caller_phone'] = $fromPhone;
+        }
+
+        $updateSql .= ' WHERE id = :id';
+        db()->prepare($updateSql)->execute($updateParams);
     } else {
         db()->prepare(
             'INSERT INTO call_logs (

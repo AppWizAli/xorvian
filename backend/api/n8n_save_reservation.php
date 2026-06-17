@@ -41,20 +41,24 @@ if ($callSid !== '' || $callerPhone !== '') {
     $updated = 0;
 
     if ($callSid !== '') {
-        $updateStmt = db()->prepare(
-            'UPDATE call_logs
-             SET caller_phone = COALESCE(NULLIF(:caller_phone, ""), caller_phone),
-                 call_type = "reservation",
+        $updateSql = 'UPDATE call_logs
+             SET call_type = "reservation",
                  call_status = "completed",
-                 ai_summary = :ai_summary
-             WHERE user_id = :user_id AND call_sid = :call_sid'
-        );
-        $updateStmt->execute([
+                 ai_summary = :ai_summary';
+        $updateParams = [
             ':user_id' => $userId,
             ':call_sid' => $callSid,
-            ':caller_phone' => $callerPhone,
             ':ai_summary' => $summary,
-        ]);
+        ];
+
+        if ($callerPhone !== '') {
+            $updateSql .= ', caller_phone = :caller_phone';
+            $updateParams[':caller_phone'] = $callerPhone;
+        }
+
+        $updateSql .= ' WHERE user_id = :user_id AND call_sid = :call_sid';
+        $updateStmt = db()->prepare($updateSql);
+        $updateStmt->execute($updateParams);
         $updated = $updateStmt->rowCount();
     }
 
