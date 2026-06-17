@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sign Up | Xorvian</title>
+  <meta name="description" content="Create your Xorvian account for restaurant AI phone answering, ordering, reservations, and automation.">
+  <link rel="stylesheet" href="index.css">
+</head>
+<body>
+  <div class="glow-blur glow-primary"></div>
+  <div class="glow-blur glow-secondary"></div>
+
+  <header>
+    <div class="container nav-container">
+      <a href="index.html" class="logo">Xorvian <span class="logo-dot"></span></a>
+      <nav class="nav-links" id="nav-menu">
+        <a href="solutions.html">AI Solutions</a>
+        <a href="about.html">About</a>
+        <a href="pricing.html">Pricing</a>
+        <a href="resources.html">Resources</a>
+        <a href="contact.html">Contact</a>
+        <a href="login.html" class="btn btn-secondary nav-auth-link">Login</a>
+      </nav>
+      <button class="mobile-menu-btn" aria-label="Toggle Navigation Menu">&#9776;</button>
+    </div>
+  </header>
+
+  <main class="page-main auth-page">
+    <section class="auth-section page-auth-section">
+      <div class="container auth-layout">
+        <div class="auth-copy">
+          <span class="section-label">Create Account</span>
+          <h1 class="section-title">Start your Xorvian customer account</h1>
+          <p class="section-subtitle left">
+            Sign up to begin restaurant onboarding. In the dashboard phase, this account will connect to your menu, phone setup, knowledge files, voice settings, orders, and reservations.
+          </p>
+          <div class="auth-benefits">
+            <div><strong>01</strong><span>Prepare restaurant profile and business details</span></div>
+            <div><strong>02</strong><span>Get ready for menu, PDF, and knowledge uploads</span></div>
+            <div><strong>03</strong><span>Connect Twilio, ElevenLabs, OpenAI, and n8n later</span></div>
+          </div>
+        </div>
+
+        <div class="auth-card">
+          <form class="auth-form active" id="signup-form" data-auth-form="signup">
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label" for="signup-first-name">First Name</label>
+                <input type="text" id="signup-first-name" class="form-input" placeholder="First name" autocomplete="given-name" required>
+              </div>
+              <div class="form-group">
+                <label class="form-label" for="signup-second-name">Second Name</label>
+                <input type="text" id="signup-second-name" class="form-input" placeholder="Second name" autocomplete="family-name" required>
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="signup-email">Email Address</label>
+              <input type="email" id="signup-email" class="form-input" placeholder="you@restaurant.com" autocomplete="email" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="signup-password">Password</label>
+              <input type="password" id="signup-password" class="form-input" placeholder="Minimum 8 characters" autocomplete="new-password" minlength="8" required>
+            </div>
+            <button type="submit" class="btn btn-primary auth-submit">Create Account</button>
+          </form>
+          <p class="auth-message" id="auth-message" aria-live="polite"></p>
+          <p class="auth-alt">Already have an account? <a href="login.html">Login here</a>.</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="index.js"></script>
+</body>
+</html>

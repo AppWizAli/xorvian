@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard | Xorvian</title>
+  <meta name="description" content="Xorvian customer dashboard for restaurant AI onboarding, profile setup, menu, calls, orders, and reservations.">
+  <link rel="stylesheet" href="index.css">
+</head>
+<body class="customer-dashboard-body">
+  <main class="customer-shell" id="dashboard-root">
+    <aside class="customer-sidebar" id="customer-sidebar">
+      <div class="customer-sidebar-head">
+        <a href="index.html" class="customer-brand">
+          <span class="customer-brand-mark">X</span>
+          <span class="customer-brand-text">Xorvian</span>
+        </a>
+        <button class="icon-button" id="customer-sidebar-toggle" type="button" aria-label="Collapse sidebar">☰</button>
+      </div>
+
+      <nav class="customer-nav" aria-label="Customer dashboard">
+        <button class="customer-nav-item active" type="button" data-dashboard-view="overview">
+          <span>◆</span><strong>Overview</strong>
+        </button>
+        <button class="customer-nav-item" type="button" data-dashboard-view="profile">
+          <span>□</span><strong>Restaurant Profile</strong>
+        </button>
+        <button class="customer-nav-item" type="button" data-dashboard-view="assistant">
+          <span>✦</span><strong>AI Assistant</strong>
+        </button>
+        <button class="customer-nav-item" type="button" data-dashboard-view="menu">
+          <span>☷</span><strong>Menu & Knowledge</strong>
+        </button>
+        <button class="customer-nav-item" type="button" data-dashboard-view="orders">
+          <span>▣</span><strong>Orders</strong>
+        </button>
+        <button class="customer-nav-item" type="button" data-dashboard-view="reservations">
+          <span>◇</span><strong>Reservations</strong>
+        </button>
+        <button class="customer-nav-item" type="button" data-dashboard-view="calls">
+          <span>◌</span><strong>Call Logs</strong>
+        </button>
+        <button class="customer-nav-item" type="button" data-dashboard-view="workflow">
+          <span>⌁</span><strong>Workflow</strong>
+        </button>
+        <button class="customer-nav-item" type="button" data-dashboard-view="settings">
+          <span>⚙</span><strong>Settings</strong>
+        </button>
+      </nav>
+
+      <div class="customer-plan-card">
+        <span>Current plan</span>
+        <strong>Free Trial</strong>
+        <small>15 days remaining</small>
+        <a href="pricing.html">Upgrade</a>
+      </div>
+    </aside>
+
+    <section class="customer-main">
+      <header class="customer-topbar">
+        <div class="customer-page-title">
+          <span id="customer-current-section">Overview</span>
+          <h1>Restaurant AI Control Center</h1>
+        </div>
+        <div class="customer-top-actions">
+          <input class="customer-search" type="search" placeholder="Search dashboard...">
+          <a class="compact-button ghost" href="contact.html">Support</a>
+          <button class="compact-button" id="logout-btn" type="button">Logout</button>
+        </div>
+      </header>
+
+      <section class="customer-view active" id="view-overview" data-view-title="Overview">
+        <div class="customer-welcome">
+          <div>
+            <span>Welcome back</span>
+            <h2 id="dashboard-name">Restaurant Owner</h2>
+            <p id="dashboard-email">Loading account...</p>
+          </div>
+          <div class="setup-pill">
+            <span>Setup</span>
+            <strong id="setup-status">Checking...</strong>
+          </div>
+        </div>
+
+        <div class="customer-stat-grid">
+          <article class="customer-stat-card">
+            <span>Total Calls</span>
+            <strong id="stat-calls">0</strong>
+            <small>All voice interactions</small>
+          </article>
+          <article class="customer-stat-card">
+            <span>Orders</span>
+            <strong id="stat-dashboard-orders">0</strong>
+            <small>Captured by AI</small>
+          </article>
+          <article class="customer-stat-card">
+            <span>Reservations</span>
+            <strong id="stat-reservations">0</strong>
+            <small>Booked or requested</small>
+          </article>
+          <article class="customer-stat-card">
+            <span>Voice Model</span>
+            <strong>Flash</strong>
+            <small>ElevenLabs low latency</small>
+          </article>
+        </div>
+
+        <div class="customer-grid-two">
+          <article class="customer-panel">
+            <div class="panel-head">
+              <h3>Onboarding Checklist</h3>
+              <span>4 steps</span>
+            </div>
+            <div class="compact-checklist">
+              <button type="button" data-dashboard-view="profile"><span>01</span> Save restaurant profile</button>
+              <button type="button" data-dashboard-view="menu"><span>02</span> Add menu and knowledge base</button>
+              <button type="button" data-dashboard-view="assistant"><span>03</span> Choose AI voice and behavior</button>
+              <button type="button" data-dashboard-view="workflow"><span>04</span> Connect phone and workflow</button>
+            </div>
+          </article>
+
+          <article class="customer-panel">
+            <div class="panel-head">
+              <h3>Assistant Defaults</h3>
+              <span>Workflow ready</span>
+            </div>
+            <div class="setting-list">
+              <div><span>Language</span><strong>English / en-US</strong></div>
+              <div><span>OpenAI</span><strong>gpt-4o-mini</strong></div>
+              <div><span>Voice</span><strong>eleven_flash_v2</strong></div>
+              <div><span>Audio</span><strong>Cloudinary MP3</strong></div>
+            </div>
+          </article>
+        </div>
+      </section>
+
+      <section class="customer-view" id="view-profile" data-view-title="Restaurant Profile">
+        <div class="panel-head page-panel-head">
+          <div>
+            <h2>Restaurant Profile</h2>
+            <p>These details help the AI answer customer questions accurately.</p>
+          </div>
+        </div>
+
+        <form id="restaurant-profile-form" class="customer-form">
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="restaurant-name">Restaurant Name</label>
+              <input class="form-input" id="restaurant-name" name="restaurantName" type="text" placeholder="Restaurant name">
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="business-phone">Business Phone</label>
+              <input class="form-input" id="business-phone" name="businessPhone" type="tel" placeholder="+1 650 000 0000">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="address">Address</label>
+            <input class="form-input" id="address" name="address" type="text" placeholder="Street address">
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="city">City</label>
+              <input class="form-input" id="city" name="city" type="text" placeholder="City">
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="country">Country</label>
+              <input class="form-input" id="country" name="country" type="text" placeholder="Country">
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="cuisine-type">Cuisine Type</label>
+              <input class="form-input" id="cuisine-type" name="cuisineType" type="text" placeholder="Pizza, burgers, cafe">
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="timezone">Timezone</label>
+              <input class="form-input" id="timezone" name="timezone" type="text" placeholder="Asia/Karachi">
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="opening-hours">Opening Hours</label>
+              <textarea class="form-input" id="opening-hours" name="openingHours" rows="3" placeholder="Monday-Friday 11am-11pm"></textarea>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="delivery-zones">Delivery Zones</label>
+              <textarea class="form-input" id="delivery-zones" name="deliveryZones" rows="3" placeholder="Areas, minimum order, delivery fees"></textarea>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="reservation-policy">Reservation Policy</label>
+            <textarea class="form-input" id="reservation-policy" name="reservationPolicy" rows="3" placeholder="Party size rules, cancellation policy, table timing"></textarea>
+          </div>
+
+          <button class="compact-button primary-wide" type="submit">Save Restaurant Profile</button>
+          <p class="auth-message" id="dashboard-message" aria-live="polite"></p>
+        </form>
+      </section>
+
+      <section class="customer-view" id="view-assistant" data-view-title="AI Assistant">
+        <div class="panel-head page-panel-head">
+          <div>
+            <h2>AI Assistant</h2>
+            <p>Configure voice, model, Twilio, OpenAI, and response behavior.</p>
+          </div>
+        </div>
+
+        <form id="agent-settings-form" class="customer-form">
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="agent-name">Agent Name</label>
+              <input class="form-input" id="agent-name" name="agentName" type="text" placeholder="Xorvian Assistant">
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="language-code">Language Code</label>
+              <input class="form-input" id="language-code" name="languageCode" type="text" placeholder="en-US">
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="openai-model">OpenAI Model</label>
+              <input class="form-input" id="openai-model" name="openaiModel" type="text" placeholder="gpt-4o-mini">
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="openai-max-tokens">Max Tokens</label>
+              <input class="form-input" id="openai-max-tokens" name="openaiMaxTokens" type="number" min="50" max="2000" placeholder="300">
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="voice-id">ElevenLabs Voice ID</label>
+              <input class="form-input" id="voice-id" name="voiceId" type="text" placeholder="ugPTAEnkrnbtfSNMzaSY">
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="voice-model">ElevenLabs Model</label>
+              <input class="form-input" id="voice-model" name="voiceModel" type="text" placeholder="eleven_flash_v2">
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="twilio-phone">Twilio Phone</label>
+              <input class="form-input" id="twilio-phone" name="twilioPhone" type="text" placeholder="+1...">
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="escalation-phone">Escalation Phone</label>
+              <input class="form-input" id="escalation-phone" name="escalationPhone" type="text" placeholder="Manager phone">
+            </div>
+          </div>
+
+          <div class="form-row">
+            <label class="toggle-row">
+              <input type="checkbox" name="orderEnabled" checked>
+              <span>Enable AI order taking</span>
+            </label>
+            <label class="toggle-row">
+              <input type="checkbox" name="reservationEnabled" checked>
+              <span>Enable AI reservations</span>
+            </label>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="gather-message">Gather Message</label>
+              <input class="form-input" id="gather-message" name="gatherMessage" type="text" placeholder="Is there anything else you need?">
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="closing-message">Closing Message</label>
+              <input class="form-input" id="closing-message" name="closingMessage" type="text" placeholder="Thank you. Goodbye.">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="system-prompt">Custom System Prompt Notes</label>
+            <textarea class="form-input" id="system-prompt" name="systemPrompt" rows="4" placeholder="Brand tone, upsell instructions, handoff rules"></textarea>
+          </div>
+
+          <button class="compact-button primary-wide" type="submit">Save Agent Settings</button>
+          <p class="auth-message" id="agent-settings-message" aria-live="polite"></p>
+        </form>
+      </section>
+
+      <section class="customer-view" id="view-menu" data-view-title="Menu & Knowledge">
+        <div class="panel-head page-panel-head">
+          <div>
+            <h2>Menu & Knowledge</h2>
+            <p>Add customer-facing menu data and knowledge your AI should know.</p>
+          </div>
+        </div>
+
+        <form id="menu-form" class="customer-form">
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="menu-notes">Menu Notes</label>
+              <textarea class="form-input" id="menu-notes" name="menuNotes" rows="4" placeholder="Popular items, modifiers, add-ons, combos, allergens"></textarea>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="knowledge-base">AI Knowledge Base</label>
+              <textarea class="form-input" id="knowledge-base" name="knowledgeBase" rows="4" placeholder="FAQ, policies, delivery instructions, offers"></textarea>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="menu-text">Paste Menu In Simple Text</label>
+            <textarea class="form-input code-textarea" id="menu-text" name="menuText" rows="12" spellcheck="false" placeholder="Pizza
+- Pizza Club Super Supreme | small 450, medium 880, large 1070, family 1600
+- Stuff Crust Pizza | small 499, medium 900, large 1100
+
+Burger
+- Zinger Burger Crispy | 240
+- Chicken Burger | 160"></textarea>
+          </div>
+
+          <div class="menu-converter-actions">
+            <button class="compact-button" id="convert-menu-btn" type="button">Convert Text to JSON</button>
+            <button class="compact-button ghost" id="load-menu-example-btn" type="button">Load Example</button>
+            <span id="menu-converter-status">Use category headings and item lines starting with -</span>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label" for="menu-json">Menu Categories JSON</label>
+            <textarea class="form-input code-textarea" id="menu-json" name="menuJson" rows="14" spellcheck="false">[
+  {
+    "name": "Pizza",
+    "items": [
+      {
+        "name": "Pizza Club Super Supreme",
+        "sizes": {
+          "small": 450,
+          "medium": 880,
+          "large": 1070,
+          "family": 1600
+        }
+      }
+    ]
+  }
+]</textarea>
+          </div>
+          <button class="compact-button primary-wide" type="submit">Save Menu</button>
+          <p class="auth-message" id="menu-message" aria-live="polite"></p>
+        </form>
+      </section>
+
+      <section class="customer-view" id="view-orders" data-view-title="Orders">
+        <div class="panel-head page-panel-head">
+          <div>
+            <h2>Orders</h2>
+            <p>AI phone orders will appear here after workflow database saving is connected.</p>
+          </div>
+        </div>
+        <div class="customer-table-card">
+          <table class="customer-table">
+            <thead><tr><th>Name</th><th>Phone</th><th>Order</th><th>Status</th><th>Time</th></tr></thead>
+            <tbody><tr><td colspan="5">No orders yet.</td></tr></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="customer-view" id="view-reservations" data-view-title="Reservations">
+        <div class="panel-head page-panel-head">
+          <div>
+            <h2>Reservations</h2>
+            <p>Guest booking requests and confirmed reservations will be listed here.</p>
+          </div>
+        </div>
+        <div class="customer-table-card">
+          <table class="customer-table">
+            <thead><tr><th>Guest</th><th>Phone</th><th>Date</th><th>Time</th><th>Guests</th><th>Status</th></tr></thead>
+            <tbody><tr><td colspan="6">No reservations yet.</td></tr></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="customer-view" id="view-calls" data-view-title="Call Logs">
+        <div class="panel-head page-panel-head">
+          <div>
+            <h2>Call Logs</h2>
+            <p>Track caller ID, call SID, transcript summary, and AI outcome.</p>
+          </div>
+        </div>
+        <div class="customer-table-card">
+          <table class="customer-table">
+            <thead><tr><th>Caller</th><th>Type</th><th>Status</th><th>Duration</th><th>Summary</th></tr></thead>
+            <tbody><tr><td colspan="5">No call logs yet.</td></tr></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="customer-view" id="view-workflow" data-view-title="Workflow">
+        <div class="panel-head page-panel-head">
+          <div>
+            <h2>Workflow Connection</h2>
+            <p>Connect the customer's n8n webhook and Google Sheet save mappings.</p>
+          </div>
+        </div>
+        <form class="customer-form" id="workflow-shortcut-form">
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="n8n-webhook-path">n8n Webhook Path</label>
+              <input class="form-input" id="n8n-webhook-path" name="n8nWebhookPath" type="text" placeholder="7d1e2d95-94bc-4f30-8b40-39a01a8415ca" form="agent-settings-form">
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="n8n-webhook-url">Full n8n Webhook URL</label>
+              <input class="form-input" id="n8n-webhook-url" name="n8nWebhookUrl" type="url" placeholder="https://.../webhook/..." form="agent-settings-form">
+            </div>
+          </div>
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="order-sheet-id">Order Sheet ID</label>
+              <input class="form-input" id="order-sheet-id" name="orderSheetId" type="text" placeholder="Google Sheet ID" form="agent-settings-form">
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="reservation-sheet-id">Reservation Sheet ID</label>
+              <input class="form-input" id="reservation-sheet-id" name="reservationSheetId" type="text" placeholder="Google Sheet ID" form="agent-settings-form">
+            </div>
+          </div>
+          <button class="compact-button primary-wide" type="submit">Save Workflow Settings</button>
+          <p class="auth-message" id="workflow-settings-message" aria-live="polite"></p>
+        </form>
+      </section>
+
+      <section class="customer-view" id="view-settings" data-view-title="Settings">
+        <div class="panel-head page-panel-head">
+          <div>
+            <h2>Settings</h2>
+            <p>Account and subscription settings for this restaurant customer.</p>
+          </div>
+        </div>
+        <div class="customer-grid-two">
+          <article class="customer-panel">
+            <h3>Account</h3>
+            <div class="setting-list">
+              <div><span>Email</span><strong id="dashboard-email-copy">Loading...</strong></div>
+              <div><span>Role</span><strong>Customer</strong></div>
+              <div><span>Plan</span><strong>Free Trial</strong></div>
+            </div>
+          </article>
+          <article class="customer-panel">
+            <h3>Support</h3>
+            <p class="muted-copy">Need help connecting Twilio, ElevenLabs, Cloudinary, OpenAI, or n8n?</p>
+            <a class="compact-button ghost" href="contact.html">Contact Support</a>
+          </article>
+        </div>
+      </section>
+    </section>
+  </main>
+
+  <script src="index.js"></script>
+</body>
+</html>

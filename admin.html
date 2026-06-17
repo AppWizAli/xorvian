@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Dashboard | Xorvian</title>
+  <meta name="description" content="Xorvian admin dashboard for customers, restaurants, AI agents, subscriptions, workflow configuration, and operations.">
+  <link rel="stylesheet" href="index.css">
+</head>
+<body class="admin-body">
+  <main class="admin-shell" id="admin-root">
+    <aside class="admin-sidebar">
+      <a href="index.html" class="admin-brand">Xorvian <span>Admin</span></a>
+      <nav class="admin-nav">
+        <a href="#overview" class="active">Dashboard</a>
+        <a href="#customers">Customers</a>
+        <a href="#agents">AI Agents</a>
+        <a href="#workflow">Workflow Template</a>
+        <a href="#billing">Subscriptions</a>
+        <a href="#messages">Messages</a>
+        <a href="#support">Support</a>
+      </nav>
+      <div class="admin-sidebar-card">
+        <span>Logged in as</span>
+        <strong id="admin-user-email">Admin</strong>
+        <button class="btn btn-secondary" id="admin-logout-btn" type="button">Logout</button>
+      </div>
+    </aside>
+
+    <section class="admin-main">
+      <header class="admin-topbar">
+        <div>
+          <span class="admin-kicker">Super Admin</span>
+          <h1>Xorvian Operations</h1>
+        </div>
+        <div class="admin-search">
+          <input type="search" placeholder="Search customers, restaurants, agents...">
+          <a href="signup.html" class="btn btn-primary">Add Customer</a>
+        </div>
+      </header>
+
+      <section class="admin-stat-grid" id="overview">
+        <article class="admin-stat-card">
+          <span>Total Customers</span>
+          <strong id="admin-total-customers">0</strong>
+          <small>Registered restaurant accounts</small>
+        </article>
+        <article class="admin-stat-card">
+          <span>Active Users</span>
+          <strong id="admin-active-users">0</strong>
+          <small>Accounts ready for onboarding</small>
+        </article>
+        <article class="admin-stat-card">
+          <span>Monthly Revenue</span>
+          <strong id="admin-monthly-revenue">$0</strong>
+          <small>Estimated from active customers</small>
+        </article>
+        <article class="admin-stat-card">
+          <span>Configured Agents</span>
+          <strong id="admin-configured-agents">0</strong>
+          <small>Voice/workflow setup started</small>
+        </article>
+      </section>
+
+      <section class="admin-grid-two">
+        <article class="admin-card">
+          <div class="admin-card-head">
+            <h2>Revenue Growth</h2>
+            <span>This Year</span>
+          </div>
+          <div class="line-chart" aria-label="Revenue growth chart">
+            <span style="height: 24%"></span>
+            <span style="height: 36%"></span>
+            <span style="height: 32%"></span>
+            <span style="height: 46%"></span>
+            <span style="height: 68%"></span>
+            <span style="height: 54%"></span>
+            <span style="height: 72%"></span>
+            <span style="height: 62%"></span>
+            <span style="height: 80%"></span>
+            <span style="height: 70%"></span>
+            <span style="height: 92%"></span>
+            <span style="height: 100%"></span>
+          </div>
+        </article>
+
+        <article class="admin-card">
+          <div class="admin-card-head">
+            <h2>Platform Activity</h2>
+            <span>Live</span>
+          </div>
+          <div class="mini-bars">
+            <div><span style="height: 42%"></span><small>Calls</small></div>
+            <div><span style="height: 58%"></span><small>Orders</small></div>
+            <div><span style="height: 36%"></span><small>Booking</small></div>
+            <div><span style="height: 76%"></span><small>Setup</small></div>
+          </div>
+        </article>
+      </section>
+
+      <section class="admin-card" id="customers">
+        <div class="admin-card-head">
+          <h2>Customers & Restaurants</h2>
+          <span>Latest 25</span>
+        </div>
+        <div class="admin-table-wrap">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>Customer</th>
+                <th>Restaurant</th>
+                <th>Email</th>
+                <th>Voice Model</th>
+                <th>Webhook Path</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="admin-customers-table">
+              <tr><td colspan="6">Loading customers...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="admin-grid-two" id="workflow">
+        <article class="admin-card">
+          <div class="admin-card-head">
+            <h2>Workflow Template From JSON</h2>
+            <span>n8n</span>
+          </div>
+          <div class="workflow-list">
+            <div><span>OpenAI</span><strong>gpt-4o-mini, 300 tokens, temp 0.3</strong></div>
+            <div><span>Voice</span><strong>ElevenLabs eleven_flash_v2</strong></div>
+            <div><span>Voice ID</span><strong>ugPTAEnkrnbtfSNMzaSY</strong></div>
+            <div><span>Cloudinary</span><strong>Upload raw MP3, play in TwiML</strong></div>
+            <div><span>Twilio Gather</span><strong>speech, en-US, dynamic webhook host</strong></div>
+          </div>
+        </article>
+
+        <article class="admin-card">
+          <div class="admin-card-head">
+            <h2>Saved Output Fields</h2>
+            <span>Orders / Reservations</span>
+          </div>
+          <div class="field-chip-list">
+            <span>Timestamp</span>
+            <span>Restaurant ID</span>
+            <span>Name</span>
+            <span>Phone</span>
+            <span>Address</span>
+            <span>Order</span>
+            <span>Date</span>
+            <span>Time</span>
+            <span>Guests</span>
+            <span>Caller ID</span>
+            <span>Call SID</span>
+          </div>
+        </article>
+      </section>
+    </section>
+  </main>
+
+  <script src="index.js"></script>
+</body>
+</html>

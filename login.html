@@ -1,0 +1,66 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login | Xorvian</title>
+  <meta name="description" content="Login to your Xorvian restaurant AI customer account.">
+  <link rel="stylesheet" href="index.css">
+</head>
+<body>
+  <div class="glow-blur glow-primary"></div>
+  <div class="glow-blur glow-secondary"></div>
+
+  <header>
+    <div class="container nav-container">
+      <a href="index.html" class="logo">Xorvian <span class="logo-dot"></span></a>
+      <nav class="nav-links" id="nav-menu">
+        <a href="solutions.html">AI Solutions</a>
+        <a href="about.html">About</a>
+        <a href="pricing.html">Pricing</a>
+        <a href="resources.html">Resources</a>
+        <a href="contact.html">Contact</a>
+        <a href="signup.html" class="btn btn-primary nav-auth-link">Sign Up</a>
+      </nav>
+      <button class="mobile-menu-btn" aria-label="Toggle Navigation Menu">&#9776;</button>
+    </div>
+  </header>
+
+  <main class="page-main auth-page">
+    <section class="auth-section page-auth-section">
+      <div class="container auth-layout">
+        <div class="auth-copy">
+          <span class="section-label">Welcome Back</span>
+          <h1 class="section-title">Login to your Xorvian account</h1>
+          <p class="section-subtitle left">
+            Access for restaurant owners and operators. The current static version validates against the demo signup saved in your browser.
+          </p>
+          <div class="auth-benefits">
+            <div><strong>01</strong><span>Continue restaurant onboarding</span></div>
+            <div><strong>02</strong><span>Review AI assistant setup steps</span></div>
+            <div><strong>03</strong><span>Prepare for dashboard activation</span></div>
+          </div>
+        </div>
+
+        <div class="auth-card">
+          <form class="auth-form active" id="login-form" data-auth-form="login">
+            <div class="form-group">
+              <label class="form-label" for="login-email">Email Address</label>
+              <input type="email" id="login-email" class="form-input" placeholder="you@restaurant.com" autocomplete="email" required>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="login-password">Password</label>
+              <input type="password" id="login-password" class="form-input" placeholder="Your password" autocomplete="current-password" required>
+            </div>
+            <button type="submit" class="btn btn-primary auth-submit">Login</button>
+          </form>
+          <p class="auth-message" id="auth-message" aria-live="polite"></p>
+          <p class="auth-alt">New to Xorvian? <a href="signup.html">Create an account</a>.</p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <script src="index.js"></script>
+</body>
+</html>

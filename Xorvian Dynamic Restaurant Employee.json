@@ -1,0 +1,576 @@
+{
+  "name": "Xorvian Dynamic Restaurant Employee",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "7d1e2d95-94bc-4f30-8b40-39a01a8415ca",
+        "responseMode": "responseNode",
+        "options": {
+          "rawBody": true
+        }
+      },
+      "id": "ecd79d51-a227-4233-9f45-535db13361a5",
+      "name": "Twilio Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [
+        -3360,
+        -640
+      ],
+      "webhookId": "7d1e2d95-94bc-4f30-8b40-39a01a8415ca",
+      "notes": "Receives incoming Twilio voice call webhook. Configure your Twilio Voice webhook URL to point to this endpoint."
+    },
+    {
+      "parameters": {
+        "jsCode": "// ============================================================\n// Parse Twilio Input - FIXED (English)\n// ============================================================\n\nlet incoming = {};\ntry {\n  incoming = $('Twilio Webhook').first().json;\n} catch(e) {}\n\nconst body = incoming.body || {};\n\nconst speechResult =\n  body.SpeechResult ?? incoming.SpeechResult ?? body.speechResult ?? incoming.speechResult ?? \"\";\n\nconst callSid =\n  body.CallSid ?? incoming.CallSid ?? body.callSid ?? incoming.callSid ?? \"test_call\";\n\nconst from =\n  body.From ?? incoming.From ?? body.from ?? incoming.from ?? \"test_phone\";\n\nconst staticData = $getWorkflowStaticData(\"global\");\n\nif (!staticData.conversations) {\n  staticData.conversations = {};\n}\n\nif (!staticData.conversations[callSid]) {\n  staticData.conversations[callSid] = {\n    messages: [],\n    reservationState: { collecting: false, name: null, phone: null, date: null, time: null, guests: null, completed: false },\n    orderState: { collecting: false, name: null, address: null, order: null, phone: null, completed: false },\n    callerPhone: from,\n    createdAt: new Date().toISOString()\n  };\n}\n\nconst conversation = staticData.conversations[callSid];\nconst userInput = (speechResult || \"\").trim();\n\nif (userInput !== \"\") {\n  conversation.messages.push({ role: \"user\", content: userInput });\n}\n\n// FIXED: added fallback so undefined systemPrompt never breaks OpenAI call\nlet systemPrompt = \"You are a restaurant assistant. Reply in English.\";\ntry {\n  const sp = $(\"Universal System Prompt\").first().json.systemPrompt;\n  if (sp) systemPrompt = sp;\n} catch(e) {}\n\nconst limitedMessages = conversation.messages.slice(-6);\n\nconst messagesForOpenAI = [\n  { role: \"system\", content: systemPrompt },\n  ...limitedMessages\n];\n\n// Cleanup old conversations (keep latest 30)\nconst keys = Object.keys(staticData.conversations);\nif (keys.length > 30) {\n  keys.slice(0, keys.length - 30).forEach(k => delete staticData.conversations[k]);\n}\n\n// FIXED: added fallback for restaurantId\nlet restaurantId = \"\";\ntry {\n  const rid = $(\"Restaurant Config\").first().json.restaurantId;\n  if (rid) restaurantId = rid;\n} catch(e) {}\n\nreturn [{\n  json: {\n    callSid,\n    from,\n    speechResult: userInput,\n    messages: messagesForOpenAI,\n    reservationState: conversation.reservationState,\n    orderState: conversation.orderState,\n    restaurantId\n  }\n}];"
+      },
+      "id": "f04edd22-b228-440a-bbba-0ea8fef71de0",
+      "name": "Parse Twilio Input",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2048,
+        -640
+      ],
+      "notes": "Parses Twilio webhook payload, manages conversation history in workflow static data, and builds OpenAI messages array with system prompt."
+    },
+    {
+      "parameters": {
+        "jsCode": "// ============================================================\n// Process AI Response - FIXED (English)\n// ============================================================\n\nconst openAiResponse = $input.first().json;\nconst prevData = $('Parse Twilio Input').first().json;\nconst callSid = prevData.callSid || 'call_' + new Date().getTime();\nconst from = prevData.from;\nconst restaurantId = prevData.restaurantId;\n\n// FIXED: check for OpenAI error first, then extract message\nlet aiMessage = '';\n\ntry {\n  // Check for API-level error\n  if (openAiResponse.error) {\n    aiMessage = \"Sorry, the service is currently unavailable. Please try again.\";\n  }\n  // Standard chat completions format\n  else if (\n    openAiResponse.choices &&\n    openAiResponse.choices[0] &&\n    openAiResponse.choices[0].message\n  ) {\n    aiMessage = openAiResponse.choices[0].message.content || '';\n  }\n  // Responses API format (fallback)\n  else if (\n    openAiResponse.output &&\n    openAiResponse.output[0] &&\n    openAiResponse.output[0].content &&\n    openAiResponse.output[0].content[0]\n  ) {\n    aiMessage = openAiResponse.output[0].content[0].text || '';\n  }\n  else if (openAiResponse.message && openAiResponse.message.content) {\n    aiMessage = openAiResponse.message.content;\n  }\n  else if (typeof openAiResponse.content === 'string') {\n    aiMessage = openAiResponse.content;\n  }\n  else {\n    aiMessage = \"Yes, please tell me, how can I help you?\";\n  }\n} catch(e) {\n  aiMessage = \"Yes, please tell me, how can I help you?\";\n}\n\n// Conversation memory\nconst staticData = $getWorkflowStaticData('global');\nif (!staticData.conversations) staticData.conversations = {};\nif (!staticData.conversations[callSid]) {\n  staticData.conversations[callSid] = {\n    messages: [],\n    reservationState: { collecting: false, name: null, phone: null, date: null, time: null, guests: null, completed: false },\n    orderState: { collecting: false, name: null, address: null, order: null, phone: null, completed: false },\n    callerPhone: from,\n    createdAt: new Date().toISOString()\n  };\n}\n\nstaticData.conversations[callSid].messages.push({ role: 'assistant', content: aiMessage });\n\n// Detect markers with flexible regex\nconst reservationMatch = aiMessage.match(/RESERVATION_COMPLETE:\\s*({[\\s\\S]*?})/i);\nconst orderMatch = aiMessage.match(/ORDER_COMPLETE:\\s*({[\\s\\S]*?})/i);\n\nlet reservationData = null;\nlet orderData = null;\nlet spokenMessage = aiMessage;\n\nif (reservationMatch) {\n  try {\n    reservationData = JSON.parse(reservationMatch[1]);\n    spokenMessage = spokenMessage.replace(/RESERVATION_COMPLETE:\\s*{[\\s\\S]*?}/i, '').replace(/\\n+/g, ' ').trim();\n    staticData.conversations[callSid].reservationState = {\n      ...staticData.conversations[callSid].reservationState,\n      ...reservationData,\n      completed: true,\n      collecting: false\n    };\n  } catch(e) { reservationData = null; }\n}\n\nif (orderMatch) {\n  try {\n    orderData = JSON.parse(orderMatch[1]);\n    spokenMessage = spokenMessage.replace(/ORDER_COMPLETE:\\s*{[\\s\\S]*?}/i, '').replace(/\\n+/g, ' ').trim();\n    staticData.conversations[callSid].orderState = {\n      ...staticData.conversations[callSid].orderState,\n      ...orderData,\n      completed: true,\n      collecting: false\n    };\n  } catch(e) { orderData = null; }\n}\n\n// Clean for TwiML speech\nspokenMessage = spokenMessage\n  .replace(/&/g, 'and')\n  .replace(/</g, '')\n  .replace(/>/g, '')\n  .replace(/\"/g, '')\n  .replace(/'/g, '')\n  .replace(/[{}\\[\\]]/g, '')\n  .trim();\n\nif (!spokenMessage || spokenMessage.length < 3) {\n  spokenMessage = \"Yes, please tell me, how can I help you?\";\n}\n\nreturn [{\n  json: {\n    restaurantId,\n    callSid,\n    from,\n    aiMessage: spokenMessage,\n    rawAiMessage: aiMessage,\n    reservationData,\n    orderData,\n    shouldSaveReservation: reservationData !== null,\n    shouldSaveOrder: orderData !== null,\n    timestamp: new Date().toISOString()\n  }\n}];"
+      },
+      "id": "6802d5bf-9766-4c11-9fb6-a035e8997231",
+      "name": "Process AI Response",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -1552,
+        -640
+      ],
+      "notes": "Extracts AI message text, detects RESERVATION_COMPLETE marker, strips JSON from spoken text, and updates static data conversation history."
+    },
+    {
+      "parameters": {
+        "jsCode": "// Build TwiML (Normal Response) - Dynamic Xorvian\nlet restaurant, data, aiMessage, webhook;\ntry { restaurant = $('Restaurant Config').first().json.restaurant; } catch(e) { restaurant = {}; }\ntry { data = $('Process AI Response').first().json; } catch(e) { data = {}; }\naiMessage = (data.aiMessage || restaurant.gatherMessage || 'Yes, please tell me, how can I help you?').trim();\nwebhook = (restaurant.webhookPath || '7d1e2d95-94bc-4f30-8b40-39a01a8415ca');\nconst safeMessage = aiMessage.replace(/&/g, 'and').replace(/</g, '').replace(/>/g, '').replace(/\\\"/g, '').replace(/'/g, '');\nlet host = 'officer3765.app.n8n.cloud';\nlet proto = 'https';\ntry {\n  const incomingHeaders = $('Twilio Webhook').first().json.headers || {};\n  host = incomingHeaders['x-forwarded-host'] || incomingHeaders['host'] || host;\n  let protoHeader = incomingHeaders['x-forwarded-proto'] || proto;\n  if (protoHeader.includes(',')) protoHeader = protoHeader.split(',')[0].trim();\n  proto = protoHeader;\n} catch(e) {}\nconst baseUrl = proto + '://' + host;\nlet audioUrl = '';\ntry { audioUrl = $('Upload an asset from file data').first().json.secure_url || $('Upload an asset from file data').first().json.url || ''; } catch(e) {}\nconst promptXml = audioUrl ? '<Play>' + audioUrl + '</Play>' : '<Say>' + safeMessage + '</Say>';\nconst language = $('Restaurant Config').first().json.settings?.twilioLanguage || 'en-US';\nconst twiml = '<?xml version=\"1.0\" encoding=\"UTF-8\"?>\\n' +\n'<Response>\\n' +\n'<Gather\\n' +\n'  input=\"speech\"\\n' +\n'  action=\"' + baseUrl + '/webhook/' + webhook + '\"\\n' +\n'  method=\"POST\"\\n' +\n'  language=\"' + language + '\"\\n' +\n'  speechTimeout=\"auto\"\\n' +\n'  timeout=\"5\"\\n' +\n'  actionOnEmptyResult=\"true\">\\n' +\npromptXml + '\\n' +\n'</Gather>\\n' +\n'<Say>I could not hear your voice, please say it again.</Say>\\n' +\n'<Redirect method=\"POST\">' + baseUrl + '/webhook/' + webhook + '</Redirect>\\n' +\n'</Response>';\nreturn [{ json: { twiml } }];"
+      },
+      "id": "fcedce56-5fed-413f-b8ab-1e6e6c7298a5",
+      "name": "Build TwiML (Normal Response)",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        192,
+        -608
+      ],
+      "alwaysOutputData": true,
+      "retryOnFail": true,
+      "onError": "continueErrorOutput",
+      "notes": "Generates valid TwiML XML for normal conversation turns. Uses Gather with speech input to keep the conversation going."
+    },
+    {
+      "parameters": {
+        "respondWith": "text",
+        "responseBody": "={{ $json.twiml }}",
+        "options": {
+          "responseCode": 200,
+          "responseHeaders": {
+            "entries": [
+              {
+                "name": "Content-Type",
+                "value": "text/xml; charset=utf-8"
+              }
+            ]
+          }
+        }
+      },
+      "id": "dd2a91b3-4750-48d0-bea1-8153af35aa65",
+      "name": "Respond to Twilio (Normal)",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1.1,
+      "position": [
+        400,
+        -608
+      ],
+      "alwaysOutputData": true,
+      "retryOnFail": true,
+      "onError": "continueErrorOutput",
+      "notes": "Returns TwiML XML response to Twilio for normal conversation turns. Content-Type must be text/xml."
+    },
+    {
+      "parameters": {
+        "resource": "speech",
+        "voice": {
+          "__rl": true,
+          "value": "={{$('Restaurant Config').first().json.settings?.voiceId || \"ugPTAEnkrnbtfSNMzaSY\"}}",
+          "mode": "id"
+        },
+        "text": "={{$('Process AI Response').first().json.aiMessage}}",
+        "additionalOptions": {
+          "model": {
+            "mode": "list",
+            "value": "={{$('Restaurant Config').first().json.settings?.voiceModel || \"eleven_flash_v2\"}}"
+          },
+          "outputFormat": "={{$('Restaurant Config').first().json.settings?.outputFormat || \"mp3_44100_128\"}}"
+        },
+        "requestOptions": {}
+      },
+      "type": "@elevenlabs/n8n-nodes-elevenlabs.elevenLabs",
+      "typeVersion": 1,
+      "position": [
+        64,
+        -1360
+      ],
+      "id": "24951c98-452d-48b0-84cf-d29d97de85be",
+      "name": "Convert text to speech",
+      "retryOnFail": true,
+      "alwaysOutputData": true,
+      "credentials": {
+        "elevenLabsApi": {
+          "id": "e5qmKlHYc4tr0TC0",
+          "name": "ElevenLabs account"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "operation": "uploadFile",
+        "resource_type_file": "raw",
+        "additionalFieldsFile": {}
+      },
+      "type": "n8n-nodes-cloudinary.cloudinary",
+      "typeVersion": 1,
+      "position": [
+        400,
+        -1360
+      ],
+      "id": "cf4cf94b-e8e9-4901-a8b1-01e73ef7c2d1",
+      "name": "Upload an asset from file data",
+      "alwaysOutputData": true,
+      "retryOnFail": true,
+      "credentials": {
+        "cloudinaryApi": {
+          "id": "anbgKdaJZNVxWvUf",
+          "name": "Cloudinary account"
+        }
+      },
+      "onError": "continueErrorOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost/Xorvian%20backend/api/n8n_context.php",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ secret: \"xorvian_n8n_secret\", restaurantId: $json.query?.restaurantId || $json.body?.restaurantId || \"\", webhookPath: $json.query?.webhookPath || $json.body?.webhookPath || \"\", callSid: $json.body?.CallSid || $json.CallSid || \"\", from: $json.body?.From || $json.From || \"\", to: $json.body?.To || $json.To || \"\" }) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -3168,
+        -640
+      ],
+      "id": "bc98ccb3-b830-431e-801d-736e873ceb5d",
+      "name": "Restaurant Config"
+    },
+    {
+      "parameters": {
+        "jsCode": "const config = $('Restaurant Config').first().json;\nconst restaurant = config.restaurant || {};\nconst restaurantInfo = [\n  'Restaurant ID: ' + (config.restaurantId || ''),\n  'Restaurant Name: ' + (restaurant.name || ''),\n  'Address: ' + (restaurant.address || ''),\n  'Opening Hours: ' + (restaurant.hours || ''),\n  'Phone Numbers: ' + ((restaurant.phones || []).join(', ')),\n  'Delivery: ' + (restaurant.delivery ? 'Available' : 'Not Available'),\n  'Delivery Areas: ' + ((restaurant.deliveryAreas || []).join(', ')),\n  'Language: ' + ((restaurant.languages || []).join(', ')),\n  'Reservation: ' + (restaurant.reservationEnabled ? 'Enabled' : 'Disabled'),\n  'Ordering: ' + (restaurant.orderingEnabled ? 'Enabled' : 'Disabled'),\n  'Reservation Policy: ' + (restaurant.reservationPolicy || ''),\n  'Menu Notes: ' + (restaurant.menuNotes || ''),\n  'Knowledge Base: ' + (restaurant.knowledgeBase || '')\n].join('\\n');\nreturn [{ json: { restaurantPrompt: restaurantInfo } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2448,
+        -640
+      ],
+      "id": "53dd7de3-b3c7-41e5-9b14-aa7c76f7f6ab",
+      "name": "Build Restaurant Prompt"
+    },
+    {
+      "parameters": {
+        "jsCode": "const config = $('Restaurant Config').first().json;\nreturn [{ json: { menu: config.menu || { categories: [] } } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2960,
+        -640
+      ],
+      "id": "b5ded870-f467-4c46-a36f-29b74d9fdf1f",
+      "name": "Restaurant Menu"
+    },
+    {
+      "parameters": {
+        "jsCode": "const config = $('Restaurant Config').first().json;\nconst restaurant = $('Build Restaurant Prompt').first().json.restaurantPrompt;\nconst menu = $('Menu Formatter').first().json.formattedMenu;\nconst settings = config.settings || {};\nconst customPrompt = settings.systemPrompt || '';\nconst prompt = [\n  'You are the AI employee for the restaurant below.', '', restaurant, '',\n  'MENU:', menu || 'No menu has been added yet. If customer asks for menu, politely say menu details are being updated and offer to connect them with staff.', '',\n  'LANGUAGE:', '- Always reply in English unless the restaurant settings say otherwise.', '',\n  'PERSONALITY:', '- Warm.', '- Friendly.', '- Professional.', '- Short replies.', '- Ask one clear question at a time.', '',\n  'MENU RULE:', 'Never dump the entire menu.', 'Ask for category first.', 'Use the restaurant menu and knowledge base only.', '',\n  'ORDER RULE:', 'If ordering is enabled, collect:', '1 Name', '2 Address', '3 Order', '4 Phone', '',\n  'When complete, output exactly:', 'ORDER_COMPLETE:', '{\"name\":\"\",\"address\":\"\",\"order\":\"\",\"phone\":\"\"}', '',\n  'RESERVATION RULE:', 'If reservations are enabled, collect:', '1 Name', '2 Phone', '3 Date', '4 Time', '5 Guests', '',\n  'When complete, output exactly:', 'RESERVATION_COMPLETE:', '{\"name\":\"\",\"phone\":\"\",\"date\":\"\",\"time\":\"\",\"guests\":\"\"}', '',\n  'CALL ENDING:', 'If customer says goodbye:', config.restaurant?.closingMessage || 'Thank you. Goodbye.', '',\n  'CUSTOM RESTAURANT RULES:', customPrompt\n].join('\\n');\nreturn [{ json: { systemPrompt: prompt } }];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2240,
+        -640
+      ],
+      "id": "3290c12f-84cd-47bd-b4ad-29d79a9ab02c",
+      "name": "Universal System Prompt"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "condition-reservation",
+              "leftValue": "={{$json.shouldSaveOrder}}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "e5b9a314-40b1-4366-86c8-94141d2def4e",
+      "name": "Has Order?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -864,
+        -624
+      ],
+      "notes": "Routes the flow: if a completed reservation was detected go to Google Sheets branch, otherwise go directly to TwiML response."
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost/Xorvian%20backend/api/n8n_save_order.php",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ secret: \"xorvian_n8n_secret\", restaurantId: $json.restaurantId, callSid: $json.callSid, from: $json.from, timestamp: $json.timestamp, orderData: $json.orderData }) }}",
+        "options": {}
+      },
+      "id": "ac0b51f3-3369-400f-97a6-dad9e035bdb2",
+      "name": "Save Order",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -560,
+        -848
+      ],
+      "retryOnFail": true,
+      "alwaysOutputData": true,
+      "onError": "continueRegularOutput",
+      "notes": "Saves completed reservation data to Google Sheets. Columns: Timestamp, Name, Phone, Date, Time, Guests, Caller ID, Call SID."
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 1
+          },
+          "conditions": [
+            {
+              "id": "condition-reservation",
+              "leftValue": "={{$json.shouldSaveReservation}}",
+              "rightValue": true,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "de320f12-320f-4f73-901d-078ae7466e28",
+      "name": "Has Reservation?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        -1392,
+        -640
+      ],
+      "notes": "Routes the flow: if a completed reservation was detected go to Google Sheets branch, otherwise go directly to TwiML response."
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://localhost/Xorvian%20backend/api/n8n_save_reservation.php",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ secret: \"xorvian_n8n_secret\", restaurantId: $json.restaurantId, callSid: $json.callSid, from: $json.from, timestamp: $json.timestamp, reservationData: $json.reservationData }) }}",
+        "options": {}
+      },
+      "id": "838a744b-9784-45c5-86c3-8259fa178eb3",
+      "name": "Save Reservation",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        -1136,
+        -832
+      ],
+      "retryOnFail": true,
+      "alwaysOutputData": true,
+      "onError": "continueRegularOutput",
+      "notes": "Saves completed reservation data to Google Sheets. Columns: Timestamp, Name, Phone, Date, Time, Guests, Caller ID, Call SID."
+    },
+    {
+      "parameters": {
+        "jsCode": "const menu =\n$('Restaurant Menu')\n.first()\n.json\n.menu;\n\nlet formatted='';\n\nfor(const category of menu.categories){\n\nformatted+=category.name.toUpperCase();\n\nformatted+='\\n';\n\nfor(const item of category.items){\n\nformatted+='- '+item.name;\n\nif(item.price){\n\nformatted+=' : Rs.'+item.price;\n\n}\n\nif(item.sizes){\n\nformatted+=' (';\n\nconst sizes=[];\n\nfor(const key in item.sizes){\n\nsizes.push(\nkey+\n' Rs.'+\nitem.sizes[key]\n);\n\n}\n\nformatted+=sizes.join(', ');\n\nformatted+=')';\n\n}\n\nformatted+='\\n';\n\n}\n\nformatted+='\\n';\n\n}\n\nreturn[{\n\njson:{\n\nformattedMenu:formatted\n\n}\n\n}];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -2720,
+        -640
+      ],
+      "id": "75e45332-d513-4553-8999-3a6e1753e75e",
+      "name": "Menu Formatter"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.openai.com/v1/chat/completions",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpBearerAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ model: $('Restaurant Config').first().json.settings?.openaiModel || \"gpt-4o-mini\", messages: $json.messages, max_tokens: $('Restaurant Config').first().json.settings?.openaiMaxTokens || 300, temperature: $('Restaurant Config').first().json.settings?.openaiTemperature ?? 0.3 }) }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.4,
+      "position": [
+        -1840,
+        -640
+      ],
+      "id": "c14972f8-6d04-48c9-be4f-cb51f4dbd2ea",
+      "name": "HTTP Request open ai ",
+      "retryOnFail": true,
+      "alwaysOutputData": true,
+      "credentials": {
+        "httpBearerAuth": {
+          "id": "ak31c0a2j1pe2ecs",
+          "name": "Bearer Auth account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    }
+  ],
+  "connections": {
+    "Twilio Webhook": {
+      "main": [
+        [
+          {
+            "node": "Restaurant Config",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Process AI Response": {
+      "main": [
+        [
+          {
+            "node": "Has Reservation?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build TwiML (Normal Response)": {
+      "main": [
+        [
+          {
+            "node": "Respond to Twilio (Normal)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Twilio Input": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request open ai ",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Convert text to speech": {
+      "main": [
+        [
+          {
+            "node": "Upload an asset from file data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Upload an asset from file data": {
+      "main": [
+        [
+          {
+            "node": "Build TwiML (Normal Response)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Restaurant Config": {
+      "main": [
+        [
+          {
+            "node": "Restaurant Menu",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Build Restaurant Prompt": {
+      "main": [
+        [
+          {
+            "node": "Universal System Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Restaurant Menu": {
+      "main": [
+        [
+          {
+            "node": "Menu Formatter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Universal System Prompt": {
+      "main": [
+        [
+          {
+            "node": "Parse Twilio Input",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Order?": {
+      "main": [
+        [
+          {
+            "node": "Save Order",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Convert text to speech",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save Order": {
+      "main": [
+        [
+          {
+            "node": "Convert text to speech",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Has Reservation?": {
+      "main": [
+        [
+          {
+            "node": "Save Reservation",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Has Order?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Save Reservation": {
+      "main": [
+        [
+          {
+            "node": "Has Order?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Menu Formatter": {
+      "main": [
+        [
+          {
+            "node": "Build Restaurant Prompt",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request open ai ": {
+      "main": [
+        [
+          {
+            "node": "Process AI Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "binaryMode": "separate",
+    "availableInMCP": false
+  },
+  "versionId": "dd0a57be-2ede-4fca-83e3-b113304cd7d3",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "dafe032aabff2a7db2e0206749f1f7975ac17238680dddcf3eafbd82d87ecf2a"
+  },
+  "nodeGroups": [],
+  "id": "A5JuNyzWeefhMLnq",
+  "tags": []
+}
