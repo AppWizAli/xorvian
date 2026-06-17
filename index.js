@@ -1,7 +1,9 @@
 document.addEventListener('DOMContentLoaded', () => {
-  const API_BASE = window.location.protocol === 'file:'
-    ? 'http://localhost/Xorvian%20backend/api'
-    : `${window.location.origin}/xorvian/backend/api`;
+  const LIVE_API_BASE = 'https://aliportfolio.org/xorvian/backend/api';
+  const LOCAL_API_BASE = 'http://localhost/Xorvian%20backend/api';
+  const API_BASE = localStorage.getItem('xorvianApiBase')
+    || (window.location.protocol === 'file:' ? LIVE_API_BASE : '')
+    || (/^(localhost|127\.0\.0\.1)$/i.test(window.location.hostname) ? LOCAL_API_BASE : `${window.location.origin}/xorvian/backend/api`);
 
   function getAuthToken() {
     return localStorage.getItem('xorvianAuthToken') || '';
@@ -349,6 +351,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const reservationsTableBody = document.getElementById('reservations-table-body');
     const callsTableBody = document.getElementById('calls-table-body');
     const operationalRefreshButtons = document.querySelectorAll('[data-refresh-operational]');
+    const apiEnvironment = document.getElementById('api-environment');
+
+    if (apiEnvironment) {
+      const isLiveApi = API_BASE.includes('aliportfolio.org');
+      apiEnvironment.textContent = isLiveApi ? 'Live API' : 'Local API';
+      apiEnvironment.title = API_BASE;
+    }
 
     function openDashboardView(viewName) {
       dashboardViews.forEach(view => {

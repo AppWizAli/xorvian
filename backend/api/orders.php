@@ -7,15 +7,30 @@ require_method('GET');
 
 $user = current_user();
 $userId = (int)$user['id'];
+$isAdmin = ($user['role'] ?? '') === 'admin';
 
 $stmt = db()->prepare(
-    'SELECT id, customer_name, customer_phone, order_status, order_total, order_items, special_notes, source, created_at
+    'SELECT orders.id,
+            orders.user_id,
+            users.email AS account_email,
+            orders.customer_name,
+            orders.customer_phone,
+            orders.order_status,
+            orders.order_total,
+            orders.order_items,
+            orders.special_notes,
+            orders.source,
+            orders.created_at
      FROM orders
-     WHERE user_id = :user_id
-     ORDER BY created_at DESC
+     INNER JOIN users ON users.id = orders.user_id
+     WHERE (:is_admin = 1 OR orders.user_id = :user_id)
+     ORDER BY orders.created_at DESC
      LIMIT 100'
 );
-$stmt->execute([':user_id' => $userId]);
+$stmt->execute([
+    ':is_admin' => $isAdmin ? 1 : 0,
+    ':user_id' => $userId,
+]);
 
 json_response([
     'ok' => true,

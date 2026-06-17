@@ -7,17 +7,27 @@ require_method('GET');
 
 $user = current_user();
 $userId = (int)$user['id'];
+$isAdmin = ($user['role'] ?? '') === 'admin';
 
-$ordersStmt = db()->prepare('SELECT COUNT(*) AS total FROM orders WHERE user_id = :user_id');
-$ordersStmt->execute([':user_id' => $userId]);
+$ordersStmt = db()->prepare('SELECT COUNT(*) AS total FROM orders WHERE (:is_admin = 1 OR user_id = :user_id)');
+$ordersStmt->execute([
+    ':is_admin' => $isAdmin ? 1 : 0,
+    ':user_id' => $userId,
+]);
 $ordersCount = (int)$ordersStmt->fetch()['total'];
 
-$reservationsStmt = db()->prepare('SELECT COUNT(*) AS total FROM reservations WHERE user_id = :user_id');
-$reservationsStmt->execute([':user_id' => $userId]);
+$reservationsStmt = db()->prepare('SELECT COUNT(*) AS total FROM reservations WHERE (:is_admin = 1 OR user_id = :user_id)');
+$reservationsStmt->execute([
+    ':is_admin' => $isAdmin ? 1 : 0,
+    ':user_id' => $userId,
+]);
 $reservationsCount = (int)$reservationsStmt->fetch()['total'];
 
-$callsStmt = db()->prepare('SELECT COUNT(*) AS total FROM call_logs WHERE user_id = :user_id');
-$callsStmt->execute([':user_id' => $userId]);
+$callsStmt = db()->prepare('SELECT COUNT(*) AS total FROM call_logs WHERE (:is_admin = 1 OR user_id = :user_id)');
+$callsStmt->execute([
+    ':is_admin' => $isAdmin ? 1 : 0,
+    ':user_id' => $userId,
+]);
 $callsCount = (int)$callsStmt->fetch()['total'];
 
 $profileStmt = db()->prepare('SELECT * FROM restaurant_profiles WHERE user_id = :user_id LIMIT 1');

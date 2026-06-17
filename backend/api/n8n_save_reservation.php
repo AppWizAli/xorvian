@@ -35,20 +35,43 @@ $stmt->execute([
 $reservationId = (int)db()->lastInsertId();
 $callSid = substr((string)($data['callSid'] ?? ''), 0, 120);
 $callerPhone = substr((string)($data['from'] ?? $reservation['phone'] ?? ''), 0, 40);
+$summary = 'Reservation saved for ' . substr((string)($reservation['date'] ?? 'requested date'), 0, 80);
 
 if ($callSid !== '' || $callerPhone !== '') {
-    db()->prepare(
-        'INSERT INTO call_logs (
-            user_id, call_sid, caller_phone, call_type, call_status, ai_summary, duration_seconds
-         ) VALUES (
-            :user_id, :call_sid, :caller_phone, "reservation", "completed", :ai_summary, NULL
-         )'
-    )->execute([
-        ':user_id' => $userId,
-        ':call_sid' => $callSid ?: null,
-        ':caller_phone' => $callerPhone ?: null,
-        ':ai_summary' => 'Reservation saved for ' . substr((string)($reservation['date'] ?? 'requested date'), 0, 80),
-    ]);
+    $updated = 0;
+
+    if ($callSid !== '') {
+        $updateStmt = db()->prepare(
+            'UPDATE call_logs
+             SET caller_phone = COALESCE(NULLIF(:caller_phone, ""), caller_phone),
+                 call_type = "reservation",
+                 call_status = "completed",
+                 ai_summary = :ai_summary
+             WHERE user_id = :user_id AND call_sid = :call_sid'
+        );
+        $updateStmt->execute([
+            ':user_id' => $userId,
+            ':call_sid' => $callSid,
+            ':caller_phone' => $callerPhone,
+            ':ai_summary' => $summary,
+        ]);
+        $updated = $updateStmt->rowCount();
+    }
+
+    if ($updated === 0) {
+        db()->prepare(
+            'INSERT INTO call_logs (
+                user_id, call_sid, caller_phone, call_type, call_status, ai_summary, duration_seconds
+             ) VALUES (
+                :user_id, :call_sid, :caller_phone, "reservation", "completed", :ai_summary, NULL
+             )'
+        )->execute([
+            ':user_id' => $userId,
+            ':call_sid' => $callSid ?: null,
+            ':caller_phone' => $callerPhone ?: null,
+            ':ai_summary' => $summary,
+        ]);
+    }
 }
 
 json_response(['ok' => true, 'message' => 'Reservation saved.', 'reservationId' => $reservationId]);

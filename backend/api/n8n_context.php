@@ -59,6 +59,48 @@ if (!$row) {
 
 $userId = (int)$row['user_id'];
 $menu = format_menu_for_user($userId);
+$callSid = clean_string($data, 'callSid', 120);
+$fromPhone = clean_string($data, 'from', 40);
+
+if ($callSid !== '' || $fromPhone !== '') {
+    $existingCallId = null;
+
+    if ($callSid !== '') {
+        $callStmt = db()->prepare(
+            'SELECT id FROM call_logs WHERE user_id = :user_id AND call_sid = :call_sid LIMIT 1'
+        );
+        $callStmt->execute([
+            ':user_id' => $userId,
+            ':call_sid' => $callSid,
+        ]);
+        $existingCall = $callStmt->fetch();
+        $existingCallId = $existingCall ? (int)$existingCall['id'] : null;
+    }
+
+    if ($existingCallId) {
+        db()->prepare(
+            'UPDATE call_logs
+             SET caller_phone = COALESCE(NULLIF(:caller_phone, ""), caller_phone),
+                 call_status = "answered"
+             WHERE id = :id'
+        )->execute([
+            ':caller_phone' => $fromPhone,
+            ':id' => $existingCallId,
+        ]);
+    } else {
+        db()->prepare(
+            'INSERT INTO call_logs (
+                user_id, call_sid, caller_phone, call_type, call_status, ai_summary, duration_seconds
+             ) VALUES (
+                :user_id, :call_sid, :caller_phone, "unknown", "answered", "Incoming voice call started.", NULL
+             )'
+        )->execute([
+            ':user_id' => $userId,
+            ':call_sid' => $callSid ?: null,
+            ':caller_phone' => $fromPhone ?: null,
+        ]);
+    }
+}
 
 json_response([
     'ok' => true,
