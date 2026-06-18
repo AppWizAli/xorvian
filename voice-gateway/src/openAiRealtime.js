@@ -42,14 +42,21 @@ const tools = [
   {
     type: 'function',
     name: 'request_handoff',
-    description: 'Request human staff handoff when the caller asks for a person or the request is risky.',
+    description: 'Create a manager callback request after collecting caller details and the reason handoff is needed.',
     parameters: {
       type: 'object',
       additionalProperties: false,
       properties: {
+        name: { type: 'string', description: 'Customer name, confirmed when possible.' },
+        phone: { type: 'string', description: 'Best callback phone number.' },
         reason: { type: 'string' },
+        urgency: { type: 'string', enum: ['normal', 'urgent', 'critical'] },
+        summary: { type: 'string', description: 'Short manager-facing summary of the issue and conversation.' },
+        relatedType: { type: 'string', enum: ['order', 'reservation', 'complaint', 'allergy', 'refund', 'large_order', 'other'] },
+        relatedDetails: { type: 'string', description: 'Order, reservation, allergy, complaint, or special request details.' },
+        bestCallbackTime: { type: 'string' },
       },
-      required: ['reason'],
+      required: ['name', 'phone', 'reason', 'urgency', 'summary', 'relatedType'],
     },
   },
 ];
@@ -69,6 +76,7 @@ export class OpenAiRealtime {
     this.ws = null;
     this.openPromise = null;
     this.functionArgs = new Map();
+    this.invokedFunctionCalls = new Set();
   }
 
   async connect() {
@@ -124,9 +132,9 @@ export class OpenAiRealtime {
             },
             turn_detection: {
               type: 'server_vad',
-              threshold: 0.55,
+              threshold: 0.45,
               prefix_padding_ms: 250,
-              silence_duration_ms: 650,
+              silence_duration_ms: 350,
               create_response: true,
             },
           },
@@ -192,6 +200,8 @@ export class OpenAiRealtime {
 
   async invokeFunction(name, callId, rawArgs) {
     if (!name || !callId) return;
+    if (this.invokedFunctionCalls.has(callId)) return;
+    this.invokedFunctionCalls.add(callId);
 
     let args = {};
     try {

@@ -84,7 +84,7 @@ The realtime agent can save data through the existing PHP endpoints:
 ```text
 create_order       -> backend/api/n8n_save_order.php
 create_reservation -> backend/api/n8n_save_reservation.php
-request_handoff    -> returns a handoff request to the model
+request_handoff    -> backend/api/n8n_save_handoff.php and optional manager SMS/WhatsApp notification
 ```
 
 The agent is instructed to call tools only after confirming details with the caller.

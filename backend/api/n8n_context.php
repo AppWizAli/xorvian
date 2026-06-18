@@ -152,6 +152,12 @@ json_response([
         'voiceModel' => $row['voice_model'] ?: 'eleven_flash_v2_5',
         'outputFormat' => $row['output_format'] ?: 'mp3_44100_128',
         'twilioLanguage' => $twilioLanguage,
+        'escalationPhone' => $row['escalation_phone'] ?: '',
+        'notificationEnabled' => (bool)($row['notification_enabled'] ?? true),
+        'notificationChannel' => $row['notification_channel'] ?: 'sms',
+        'notificationPhone' => $row['notification_phone'] ?: ($row['escalation_phone'] ?: ''),
+        'notificationEmail' => $row['notification_email'] ?: '',
+        'notificationMinUrgency' => $row['notification_min_urgency'] ?: 'urgent',
         'systemPrompt' => $row['system_prompt'] ?: '',
     ],
 ]);

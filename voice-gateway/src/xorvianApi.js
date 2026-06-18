@@ -61,3 +61,26 @@ export async function saveReservation({ restaurantId, callSid, from, reservation
     reservationData,
   });
 }
+
+export async function saveHandoff({
+  restaurantId,
+  callSid,
+  from,
+  handoffData,
+  notificationChannel = '',
+  notificationStatus = '',
+  notificationTarget = '',
+  notificationError = '',
+}) {
+  return post('n8n_save_handoff.php', {
+    restaurantId,
+    callSid,
+    from,
+    timestamp: new Date().toISOString(),
+    handoffData,
+    notificationChannel,
+    notificationStatus,
+    notificationTarget,
+    notificationError,
+  });
+}

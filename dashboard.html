@@ -40,6 +40,9 @@
         <button class="customer-nav-item" type="button" data-dashboard-view="calls">
           <span>◌</span><strong>Call Logs</strong>
         </button>
+        <button class="customer-nav-item" type="button" data-dashboard-view="handoffs">
+          <span>!</span><strong>Handoffs</strong>
+        </button>
         <button class="customer-nav-item" type="button" data-dashboard-view="workflow">
           <span>⌁</span><strong>Voice Gateway</strong>
         </button>
@@ -265,6 +268,41 @@
               <input type="checkbox" name="reservationEnabled" checked>
               <span>Enable AI reservations</span>
             </label>
+            <label class="toggle-row">
+              <input type="checkbox" name="notificationEnabled" checked>
+              <span>Notify manager on handoff</span>
+            </label>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="notification-channel">Notification Channel</label>
+              <select class="form-input" id="notification-channel" name="notificationChannel">
+                <option value="sms">SMS</option>
+                <option value="whatsapp">WhatsApp</option>
+                <option value="email">Email</option>
+                <option value="none">Dashboard only</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="notification-min-urgency">Notify When Urgency Is</label>
+              <select class="form-input" id="notification-min-urgency" name="notificationMinUrgency">
+                <option value="urgent">Urgent or critical</option>
+                <option value="normal">All handoffs</option>
+                <option value="critical">Critical only</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="notification-phone">Notification Phone</label>
+              <input class="form-input" id="notification-phone" name="notificationPhone" type="text" placeholder="+44...">
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="notification-email">Notification Email</label>
+              <input class="form-input" id="notification-email" name="notificationEmail" type="email" placeholder="manager@example.com">
+            </div>
           </div>
 
           <div class="form-row">
@@ -393,6 +431,22 @@ Burger
           <table class="customer-table">
             <thead><tr><th>Caller</th><th>Type</th><th>Status</th><th>Duration</th><th>Summary</th></tr></thead>
             <tbody id="calls-table-body"><tr><td colspan="5">Loading call logs...</td></tr></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="customer-view" id="view-handoffs" data-view-title="Handoffs">
+        <div class="panel-head page-panel-head">
+          <div>
+            <h2>Handoff Requests</h2>
+            <p>Manager callbacks requested by the voice agent appear here with caller details and reason.</p>
+          </div>
+          <button class="compact-button" type="button" data-refresh-operational>Refresh</button>
+        </div>
+        <div class="customer-table-card">
+          <table class="customer-table">
+            <thead><tr><th>Customer</th><th>Urgency</th><th>Reason</th><th>Notification</th><th>Status</th><th>Action</th></tr></thead>
+            <tbody id="handoffs-table-body"><tr><td colspan="6">Loading handoff requests...</td></tr></tbody>
           </table>
         </div>
       </section>

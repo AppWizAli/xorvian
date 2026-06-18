@@ -3,14 +3,46 @@ import { OpenAiRealtime } from './openAiRealtime.js';
 import { config } from './config.js';
 import { logger } from './logger.js';
 import { buildAgentInstructions, greetingFor } from './restaurantPrompt.js';
-import { fetchRestaurantContext, saveOrder, saveReservation } from './xorvianApi.js';
+import { fetchRestaurantContext, saveHandoff, saveOrder, saveReservation } from './xorvianApi.js';
 import { twilioClear, twilioMark, twilioMedia } from './twilioProtocol.js';
 import { twilioMulawToPcm24kBase64 } from './audioCodec.js';
 
 const WS_OPEN = 1;
+const URGENCY_RANK = { normal: 1, urgent: 2, critical: 3 };
 
 function normalizePhone(value) {
   return String(value || '').replace(/[^\d+]/g, '').slice(0, 40);
+}
+
+function normalizeUrgency(value) {
+  const urgency = String(value || 'normal').toLowerCase();
+  return URGENCY_RANK[urgency] ? urgency : 'normal';
+}
+
+function truncate(value, maxLength) {
+  return String(value || '').replace(/\s+/g, ' ').trim().slice(0, maxLength);
+}
+
+function shouldNotify(settings, urgency) {
+  if (settings.notificationEnabled === false) return false;
+  const channel = String(settings.notificationChannel || 'sms').toLowerCase();
+  if (channel === 'none') return false;
+  const minimum = normalizeUrgency(settings.notificationMinUrgency || 'urgent');
+  return URGENCY_RANK[urgency] >= URGENCY_RANK[minimum];
+}
+
+function twilioTarget(channel, target) {
+  if (channel === 'whatsapp' && !String(target).startsWith('whatsapp:')) {
+    return `whatsapp:${target}`;
+  }
+  return target;
+}
+
+function twilioFrom(channel) {
+  if (channel === 'whatsapp') {
+    return config.twilioWhatsappFrom || (config.twilioFromPhone ? `whatsapp:${config.twilioFromPhone}` : '');
+  }
+  return config.twilioFromPhone;
 }
 
 export class CallSession {
@@ -192,15 +224,124 @@ export class CallSession {
     }
 
     if (name === 'request_handoff') {
-      return {
-        ok: true,
-        message: 'Human handoff requested.',
-        escalationPhone: this.context?.restaurant?.phones?.[0] || '',
-        reason: args.reason || '',
-      };
+      const result = await this.handleHandoffRequest(args);
+      return result;
     }
 
     return { ok: false, message: `Unknown function: ${name}` };
+  }
+
+  async sendManagerNotification(handoffData) {
+    const settings = this.context?.settings || {};
+    const channel = String(settings.notificationChannel || 'sms').toLowerCase();
+    const urgency = normalizeUrgency(handoffData.urgency);
+    const target = normalizePhone(settings.notificationPhone || settings.escalationPhone || '');
+
+    if (!shouldNotify(settings, urgency)) {
+      return { channel, status: 'skipped', target: '', error: '' };
+    }
+
+    if (!['sms', 'whatsapp'].includes(channel)) {
+      return {
+        channel,
+        status: 'pending',
+        target: settings.notificationEmail || target,
+        error: channel === 'email' ? 'Email delivery is dashboard-only until SMTP is configured.' : '',
+      };
+    }
+
+    const from = twilioFrom(channel);
+    if (!config.twilioAccountSid || !config.twilioAuthToken || !from || !target) {
+      return {
+        channel,
+        status: 'failed',
+        target,
+        error: 'Twilio notification credentials, from number, or manager phone are missing.',
+      };
+    }
+
+    const restaurantName = this.context?.restaurant?.name || 'Restaurant';
+    const body = [
+      `Xorvian ${urgency.toUpperCase()} handoff for ${restaurantName}.`,
+      `Customer: ${handoffData.name || 'Customer'} ${handoffData.phone || this.from || ''}`.trim(),
+      `Reason: ${handoffData.reason}`,
+      `Summary: ${handoffData.summary || handoffData.relatedDetails || 'See dashboard for details.'}`,
+    ].join('\n');
+
+    try {
+      const response = await fetch(
+        `https://api.twilio.com/2010-04-01/Accounts/${encodeURIComponent(config.twilioAccountSid)}/Messages.json`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Basic ${Buffer.from(`${config.twilioAccountSid}:${config.twilioAuthToken}`).toString('base64')}`,
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+          body: new URLSearchParams({
+            From: from,
+            To: twilioTarget(channel, target),
+            Body: body,
+          }),
+        }
+      );
+
+      const text = await response.text();
+      if (!response.ok) {
+        return {
+          channel,
+          status: 'failed',
+          target,
+          error: truncate(text || `Twilio notification failed: ${response.status}`, 1000),
+        };
+      }
+
+      return { channel, status: 'sent', target, error: '' };
+    } catch (error) {
+      return { channel, status: 'failed', target, error: truncate(error.message, 1000) };
+    }
+  }
+
+  async handleHandoffRequest(args) {
+    const handoffData = {
+      name: truncate(args.name || '', 160),
+      phone: normalizePhone(args.phone || this.from),
+      reason: truncate(args.reason || 'Manager callback requested', 255),
+      urgency: normalizeUrgency(args.urgency),
+      summary: truncate(args.summary || '', 50000),
+      relatedType: truncate(args.relatedType || 'other', 60),
+      relatedDetails: truncate(args.relatedDetails || '', 50000),
+      bestCallbackTime: truncate(args.bestCallbackTime || '', 120),
+    };
+
+    const notification = await this.sendManagerNotification(handoffData);
+    const saved = await saveHandoff({
+      restaurantId: this.restaurantId,
+      callSid: this.callSid,
+      from: this.from,
+      handoffData,
+      notificationChannel: notification.channel,
+      notificationStatus: notification.status,
+      notificationTarget: notification.target,
+      notificationError: notification.error,
+    });
+
+    logger.info('Handoff request saved', {
+      callSid: this.callSid,
+      restaurantId: this.restaurantId,
+      handoffId: saved.handoffId,
+      urgency: handoffData.urgency,
+      notificationStatus: notification.status,
+    });
+
+    return {
+      ok: true,
+      handoffId: saved.handoffId,
+      notificationStatus: notification.status,
+      message:
+        notification.status === 'sent'
+          ? 'Manager notification sent and callback request saved.'
+          : 'Callback request saved for the manager.',
+    };
   }
 
   close() {

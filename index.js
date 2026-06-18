@@ -350,6 +350,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const ordersTableBody = document.getElementById('orders-table-body');
     const reservationsTableBody = document.getElementById('reservations-table-body');
     const callsTableBody = document.getElementById('calls-table-body');
+    const handoffsTableBody = document.getElementById('handoffs-table-body');
     const operationalRefreshButtons = document.querySelectorAll('[data-refresh-operational]');
     const apiEnvironment = document.getElementById('api-environment');
 
@@ -427,6 +428,10 @@ document.addEventListener('DOMContentLoaded', () => {
         voiceModel: agent?.voice_model,
         twilioPhone: agent?.twilio_phone,
         escalationPhone: agent?.escalation_phone,
+        notificationChannel: agent?.notification_channel,
+        notificationMinUrgency: agent?.notification_min_urgency,
+        notificationPhone: agent?.notification_phone,
+        notificationEmail: agent?.notification_email,
         n8nWebhookUrl: agent?.n8n_webhook_url,
         n8nWebhookPath: workflow?.n8n_webhook_path,
         orderSheetId: workflow?.order_sheet_id,
@@ -448,6 +453,10 @@ document.addEventListener('DOMContentLoaded', () => {
       if (agentSettingsForm.elements.reservationEnabled) {
         agentSettingsForm.elements.reservationEnabled.checked = String(agent?.reservation_enabled ?? '1') === '1';
       }
+
+      if (agentSettingsForm.elements.notificationEnabled) {
+        agentSettingsForm.elements.notificationEnabled.checked = String(agent?.notification_enabled ?? '1') === '1';
+      }
     }
 
     function setTableMessage(tableBody, colspan, message, type = '') {
@@ -464,15 +473,15 @@ document.addEventListener('DOMContentLoaded', () => {
     function statusClass(value) {
       const normalized = String(value || '').toLowerCase();
 
-      if (['completed', 'confirmed', 'ready', 'answered'].includes(normalized)) {
+      if (['completed', 'confirmed', 'ready', 'answered', 'notified', 'resolved'].includes(normalized)) {
         return 'success';
       }
 
-      if (['cancelled', 'failed', 'missed'].includes(normalized)) {
+      if (['cancelled', 'failed', 'missed', 'critical'].includes(normalized)) {
         return 'danger';
       }
 
-      if (['preparing', 'out_for_delivery', 'requested', 'modified'].includes(normalized)) {
+      if (['preparing', 'out_for_delivery', 'requested', 'modified', 'urgent', 'contacted'].includes(normalized)) {
         return 'warning';
       }
 
@@ -569,16 +578,62 @@ document.addEventListener('DOMContentLoaded', () => {
       `).join('');
     }
 
+    function handoffSummary(handoff) {
+      return [
+        handoff.reason,
+        handoff.conversation_summary,
+        handoff.related_details ? `Details: ${handoff.related_details}` : '',
+        handoff.best_callback_time ? `Best callback: ${handoff.best_callback_time}` : ''
+      ].filter(Boolean).join(' | ');
+    }
+
+    function renderHandoffs(handoffs) {
+      if (!handoffsTableBody) return;
+
+      if (!handoffs.length) {
+        setTableMessage(handoffsTableBody, 6, 'No handoff requests yet.');
+        return;
+      }
+
+      handoffsTableBody.innerHTML = handoffs.map(handoff => {
+        const notification = [
+          handoff.notification_channel || 'dashboard',
+          handoff.notification_status || 'saved',
+          handoff.notification_target || ''
+        ].filter(Boolean).join(' / ');
+        const disabled = ['resolved', 'cancelled'].includes(String(handoff.status || '').toLowerCase()) ? 'disabled' : '';
+
+        return `
+          <tr>
+            <td>
+              <strong>${escapeHtml(handoff.customer_name || 'Customer')}</strong>
+              <small>${escapeHtml(handoff.customer_phone || '-')}</small>
+            </td>
+            <td>${renderStatus(handoff.urgency || 'normal')}</td>
+            <td class="table-main-cell">${escapeHtml(handoffSummary(handoff) || '-')}</td>
+            <td>${escapeHtml(notification)}</td>
+            <td>${renderStatus(handoff.status || 'new')}</td>
+            <td>
+              <button class="compact-button ghost handoff-action" type="button" data-handoff-id="${escapeHtml(handoff.id)}" data-next-status="contacted" ${disabled}>Contacted</button>
+              <button class="compact-button ghost handoff-action" type="button" data-handoff-id="${escapeHtml(handoff.id)}" data-next-status="resolved" ${disabled}>Resolved</button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
     async function loadOperationalTables() {
       try {
         setTableMessage(ordersTableBody, 5, 'Loading orders...');
         setTableMessage(reservationsTableBody, 6, 'Loading reservations...');
         setTableMessage(callsTableBody, 5, 'Loading call logs...');
+        setTableMessage(handoffsTableBody, 6, 'Loading handoff requests...');
 
-        const [ordersResult, reservationsResult, callsResult] = await Promise.allSettled([
+        const [ordersResult, reservationsResult, callsResult, handoffsResult] = await Promise.allSettled([
           apiRequest('orders.php'),
           apiRequest('reservations.php'),
-          apiRequest('call_logs.php')
+          apiRequest('call_logs.php'),
+          apiRequest('handoff_requests.php')
         ]);
 
         if (ordersResult.status === 'fulfilled') {
@@ -598,11 +653,18 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
           setTableMessage(callsTableBody, 5, callsResult.reason.message || 'Could not load call logs.', 'error');
         }
+
+        if (handoffsResult.status === 'fulfilled') {
+          renderHandoffs(handoffsResult.value.handoffs || []);
+        } else {
+          setTableMessage(handoffsTableBody, 6, handoffsResult.reason.message || 'Could not load handoff requests.', 'error');
+        }
       } catch (error) {
         const message = error.message || 'Could not load operational data.';
         setTableMessage(ordersTableBody, 5, message, 'error');
         setTableMessage(reservationsTableBody, 6, message, 'error');
         setTableMessage(callsTableBody, 5, message, 'error');
+        setTableMessage(handoffsTableBody, 6, message, 'error');
       }
     }
 
@@ -812,6 +874,7 @@ Fries
         const payload = Object.fromEntries(formData.entries());
         payload.orderEnabled = agentSettingsForm.elements.orderEnabled?.checked || false;
         payload.reservationEnabled = agentSettingsForm.elements.reservationEnabled?.checked || false;
+        payload.notificationEnabled = agentSettingsForm.elements.notificationEnabled?.checked || false;
         payload.openaiTemperature = 0.3;
         payload.voiceProvider = 'elevenlabs';
         payload.twilioLanguage = payload.languageCode || 'en-CA';
@@ -914,6 +977,29 @@ Fries
         loadOperationalTables();
       });
     });
+
+    if (handoffsTableBody) {
+      handoffsTableBody.addEventListener('click', async (event) => {
+        const button = event.target.closest('.handoff-action');
+        if (!button) return;
+
+        button.disabled = true;
+        try {
+          await apiRequest('handoff_requests.php', {
+            method: 'POST',
+            body: JSON.stringify({
+              id: button.getAttribute('data-handoff-id'),
+              status: button.getAttribute('data-next-status'),
+              managerNotes: ''
+            })
+          });
+          loadOperationalTables();
+        } catch (error) {
+          button.disabled = false;
+          setTableMessage(handoffsTableBody, 6, error.message, 'error');
+        }
+      });
+    }
 
     if (profileForm) {
       profileForm.addEventListener('submit', async (event) => {
