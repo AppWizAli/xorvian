@@ -19,6 +19,14 @@ document.addEventListener('DOMContentLoaded', () => {
     localStorage.removeItem('xorvianUser');
   }
 
+  function pagePath(page) {
+    if (window.location.protocol === 'file:') {
+      return `${page}.html`;
+    }
+
+    return page === 'index' ? './' : page;
+  }
+
   function escapeHtml(value) {
     return String(value ?? '')
       .replace(/&/g, '&amp;')
@@ -283,7 +291,7 @@ document.addEventListener('DOMContentLoaded', () => {
         signupForm.reset();
         showAuthMessage('Account created. Opening dashboard...', 'success');
         setTimeout(() => {
-          window.location.href = 'dashboard.html';
+          window.location.href = pagePath('dashboard');
         }, 600);
       } catch (error) {
         showAuthMessage(error.message, 'error');
@@ -307,7 +315,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
         saveAuthSession(payload);
         loginForm.reset();
-        const nextPage = payload.user?.role === 'admin' ? 'admin.html' : 'dashboard.html';
+        const nextPage = payload.user?.role === 'admin' ? pagePath('admin') : pagePath('dashboard');
         showAuthMessage('Login successful. Opening dashboard...', 'success');
         setTimeout(() => {
           window.location.href = nextPage;
@@ -950,7 +958,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     async function loadDashboard() {
       if (!getAuthToken()) {
-        window.location.href = 'login.html';
+        window.location.href = pagePath('login');
         return;
       }
 
@@ -976,7 +984,7 @@ document.addEventListener('DOMContentLoaded', () => {
         loadOperationalTables();
       } catch (error) {
         clearAuthSession();
-        window.location.href = 'login.html';
+        window.location.href = pagePath('login');
       }
     }
 
@@ -1361,7 +1369,7 @@ Fries
         }
 
         clearAuthSession();
-        window.location.href = 'login.html';
+        window.location.href = pagePath('login');
       });
     }
 
@@ -1616,14 +1624,14 @@ Fries
 
     async function loadAdminDashboard() {
       if (!getAuthToken()) {
-        window.location.href = 'login.html';
+        window.location.href = pagePath('login');
         return;
       }
 
       try {
         const user = JSON.parse(localStorage.getItem('xorvianUser') || 'null');
         if (user && user.role !== 'admin') {
-          window.location.href = 'dashboard.html';
+          window.location.href = pagePath('dashboard');
           return;
         }
 
@@ -1635,13 +1643,13 @@ Fries
         showAdminMessage('', '');
       } catch (error) {
         if (String(error.message).includes('Admin access')) {
-          window.location.href = 'dashboard.html';
+          window.location.href = pagePath('dashboard');
           return;
         }
 
         if (String(error.message).includes('Invalid or expired token') || String(error.message).includes('Missing bearer token')) {
           clearAuthSession();
-          window.location.href = 'login.html';
+          window.location.href = pagePath('login');
           return;
         }
 
@@ -1717,7 +1725,7 @@ Fries
           // Continue with local logout.
         }
         clearAuthSession();
-        window.location.href = 'login.html';
+        window.location.href = pagePath('login');
       });
     }
 
