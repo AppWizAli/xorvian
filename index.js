@@ -36,6 +36,498 @@ document.addEventListener('DOMContentLoaded', () => {
       .replace(/'/g, '&#039;');
   }
 
+  function initLiveDemoPage() {
+    const root = document.getElementById('live-demo-root');
+    if (!root) return;
+
+    const scenarioSelect = document.getElementById('demo-scenario');
+    const languageSelect = document.getElementById('demo-language');
+    const startBtn = document.getElementById('demo-start');
+    const resetBtn = document.getElementById('demo-reset');
+    const statusPill = document.getElementById('demo-status');
+    const stageLabel = document.getElementById('demo-stage');
+    const timerLabel = document.getElementById('demo-timer');
+    const restaurantLabel = document.getElementById('demo-restaurant-name');
+    const callerLabel = document.getElementById('demo-caller-number');
+    const routeLabel = document.getElementById('demo-route');
+    const scenarioLabel = document.getElementById('demo-call-type');
+    const languageLabel = document.getElementById('demo-language-label');
+    const transcriptFeed = document.getElementById('demo-transcript');
+    const orderCard = document.getElementById('demo-order-card');
+    const reservationCard = document.getElementById('demo-reservation-card');
+    const handoffCard = document.getElementById('demo-handoff-card');
+    const outcomeCard = document.getElementById('demo-outcome-card');
+    const answerRateLabel = document.getElementById('demo-answer-rate');
+    const latencyLabel = document.getElementById('demo-latency');
+    const syncLabel = document.getElementById('demo-sync');
+
+    const audioContextClass = window.AudioContext || window.webkitAudioContext;
+    const languageProfiles = {
+      en: {
+        label: 'English',
+        locale: 'en-US',
+        opening: 'Hi, I want to place a pickup order.',
+        greeting: 'Absolutely. I can help with that.',
+      },
+      es: {
+        label: 'Spanish',
+        locale: 'es-ES',
+        opening: 'Hola, quiero hacer un pedido para recoger.',
+        greeting: 'Claro, con gusto le ayudo.',
+      },
+      hi: {
+        label: 'Hindi',
+        locale: 'hi-IN',
+        opening: 'Namaste, mujhe ek pickup order dena hai.',
+        greeting: 'Bilkul, main madad karta hoon.',
+      },
+      zh: {
+        label: 'Mandarin',
+        locale: 'zh-CN',
+        opening: 'Ni hao, wo xiang dian yi ge wai dai ding dan.',
+        greeting: 'Dang ran, wo lai bang nin.',
+      },
+    };
+
+    function makeScenario(languageKey) {
+      const lang = languageProfiles[languageKey] || languageProfiles.en;
+
+      return {
+        order: {
+          title: 'Pickup order',
+          restaurant: "DePietro's Pizza",
+          caller: '+1 (415) 555-0123',
+          city: 'San Francisco, CA',
+          route: 'Existing number -> Xorvian live gateway -> POS',
+          callType: 'Order capture',
+          statusHint: 'Order sent',
+          outcome: 'Ticket #8210 synchronized to kitchen POS.',
+          order: {
+            title: 'Order ticket',
+            items: ['2x Pepperoni Pizza', '1x Pesto Pasta', '1x Coke'],
+            total: '$62.50',
+            footer: 'Ready for pickup in about 25 minutes.',
+            note: 'Includes dynamic upsell and special instructions.',
+          },
+          reservation: null,
+          handoff: null,
+          transcript: [
+            { speaker: 'customer', text: lang.opening },
+            { speaker: 'agent', text: lang.greeting },
+            { speaker: 'customer', text: 'Can you make the pizzas large and add garlic bread?' },
+            { speaker: 'agent', text: 'Absolutely. I have the full ticket at $62.50 and I am sending it to the POS now.' },
+            { speaker: 'customer', text: 'Perfect. See you soon.' },
+            { speaker: 'agent', text: 'You are all set. Your pickup order is confirmed.' },
+          ],
+          updates: [
+            { delay: 6500, type: 'order' },
+          ],
+        },
+        reservation: {
+          title: 'Dinner reservation',
+          restaurant: 'Island Grill & Pub',
+          caller: '+1 (803) 555-0172',
+          city: 'Rock Hill, SC',
+          route: 'Existing number -> Xorvian live gateway -> reservation log',
+          callType: 'Reservation',
+          statusHint: 'Reservation booked',
+          outcome: 'Confirmation written to the reservation queue.',
+          order: null,
+          reservation: {
+            title: 'Reservation card',
+            guest: 'Jordan Lee',
+            date: 'Friday, June 21',
+            time: '7:00 PM',
+            party: '4 guests',
+            footer: 'Table request: window booth, if available.',
+            note: 'Confirmation can be modified or cancelled later.',
+          },
+          handoff: null,
+          transcript: [
+            { speaker: 'customer', text: 'Hi, do you have a table for four at 7:00 tonight?' },
+            { speaker: 'agent', text: 'Let me check availability for you right now.' },
+            { speaker: 'customer', text: 'It is for my family, and we need a booth if possible.' },
+            { speaker: 'agent', text: 'You are booked for 7:00 PM. I am saving the reservation and noting the booth request.' },
+            { speaker: 'customer', text: 'Perfect, thank you.' },
+            { speaker: 'agent', text: 'Your table is confirmed and the details are saved.' },
+          ],
+          updates: [
+            { delay: 6500, type: 'reservation' },
+          ],
+        },
+        handoff: {
+          title: 'Manager handoff',
+          restaurant: 'Fiery Nashville Hot Chicken',
+          caller: '+1 (615) 555-0198',
+          city: 'Nashville, TN',
+          route: 'Existing number -> Xorvian live gateway -> SMS / dashboard handoff',
+          callType: 'Handoff',
+          statusHint: 'Manager notified',
+          outcome: 'Urgent callback request created with caller context.',
+          order: null,
+          reservation: null,
+          handoff: {
+            title: 'Handoff request',
+            customer: 'Chris Walker',
+            urgency: 'Urgent',
+            reason: 'Wrong item in the bag',
+            target: 'Manager SMS and dashboard queue',
+            footer: 'Best callback time: as soon as possible.',
+            note: 'The caller summary stays attached to the request.',
+          },
+          transcript: [
+            { speaker: 'customer', text: 'I need to talk to the manager about my order.' },
+            { speaker: 'agent', text: 'I am sorry about that. I can document everything and alert the manager right now.' },
+            { speaker: 'customer', text: 'The order had the wrong items and I need a callback.' },
+            { speaker: 'agent', text: 'Understood. I have created an urgent handoff with the full summary and sent the notification.' },
+            { speaker: 'customer', text: 'Thank you.' },
+            { speaker: 'agent', text: 'You will hear back from the team shortly.' },
+          ],
+          updates: [
+            { delay: 6500, type: 'handoff' },
+          ],
+        },
+      };
+    }
+
+    let timerHandle = null;
+    let timerStart = 0;
+    let scheduledHandles = [];
+    let isRunning = false;
+
+    function currentLanguage() {
+      return languageProfiles[languageSelect?.value || 'en'] || languageProfiles.en;
+    }
+
+    function currentScenario() {
+      const scenarios = makeScenario(languageSelect?.value || 'en');
+      return scenarios[scenarioSelect?.value || 'order'] || scenarios.order;
+    }
+
+    function clearScheduledHandles() {
+      scheduledHandles.forEach(handle => clearTimeout(handle));
+      scheduledHandles = [];
+      if (timerHandle) {
+        clearInterval(timerHandle);
+        timerHandle = null;
+      }
+      if (window.speechSynthesis) {
+        window.speechSynthesis.cancel();
+      }
+    }
+
+    function formatDuration(totalSeconds) {
+      const minutes = Math.floor(totalSeconds / 60);
+      const seconds = Math.floor(totalSeconds % 60);
+      return `${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`;
+    }
+
+    function setStatus(text, tone = 'idle') {
+      if (!statusPill) return;
+      statusPill.textContent = text;
+      statusPill.className = `demo-pill demo-pill-${tone}`.trim();
+    }
+
+    function setStartButtonState(text, disabled) {
+      document.querySelectorAll('[data-demo-action="start"]').forEach(button => {
+        button.disabled = disabled;
+        button.textContent = text;
+      });
+    }
+
+    function appendTranscript(speaker, text, meta = '') {
+      if (!transcriptFeed) return;
+      const roleClass = speaker === 'agent' ? 'demo-message-agent' : speaker === 'system' ? 'demo-message-system' : 'demo-message-customer';
+      const name = speaker === 'agent' ? 'Xorvian' : speaker === 'system' ? 'System' : 'Caller';
+      const message = document.createElement('div');
+      message.className = `demo-message ${roleClass}`;
+      message.innerHTML = `
+        <div class="demo-message-meta">${escapeHtml(name)}${meta ? ` <span>${escapeHtml(meta)}</span>` : ''}</div>
+        <p>${escapeHtml(text)}</p>
+      `;
+      transcriptFeed.appendChild(message);
+      transcriptFeed.scrollTop = transcriptFeed.scrollHeight;
+    }
+
+    function speakLine(text, locale) {
+      if (!window.speechSynthesis || !text) return;
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = locale;
+      utterance.rate = 1.02;
+      utterance.pitch = 1.05;
+      window.speechSynthesis.speak(utterance);
+    }
+
+    function playStartChime() {
+      if (!audioContextClass) return;
+      try {
+        const audioCtx = new audioContextClass();
+        const now = audioCtx.currentTime;
+        const playTone = (freq, duration, startTime) => {
+          const osc = audioCtx.createOscillator();
+          const gainNode = audioCtx.createGain();
+          osc.type = 'sine';
+          osc.frequency.setValueAtTime(freq, startTime);
+          gainNode.gain.setValueAtTime(0.12, startTime);
+          gainNode.gain.exponentialRampToValueAtTime(0.0001, startTime + duration);
+          osc.connect(gainNode);
+          gainNode.connect(audioCtx.destination);
+          osc.start(startTime);
+          osc.stop(startTime + duration);
+        };
+
+        playTone(392, 0.14, now);
+        playTone(523.25, 0.16, now + 0.12);
+        playTone(659.25, 0.18, now + 0.24);
+      } catch (error) {
+        console.warn('Audio preview unavailable.', error);
+      }
+    }
+
+    function renderScenarioCards(scenario) {
+      if (restaurantLabel) {
+        restaurantLabel.textContent = scenario.restaurant;
+      }
+      if (callerLabel) {
+        callerLabel.textContent = `${scenario.caller} - ${scenario.city}`;
+      }
+      if (routeLabel) {
+        routeLabel.textContent = scenario.route;
+      }
+      if (scenarioLabel) {
+        scenarioLabel.textContent = scenario.callType;
+      }
+      if (languageLabel) {
+        languageLabel.textContent = currentLanguage().label;
+      }
+      if (answerRateLabel) {
+        answerRateLabel.textContent = '100%';
+      }
+      if (latencyLabel) {
+        latencyLabel.textContent = '<800ms';
+      }
+      if (syncLabel) {
+        syncLabel.textContent = 'Live';
+      }
+
+      if (orderCard) {
+        orderCard.innerHTML = scenario.order
+          ? `
+            <div class="demo-card-head">
+              <span>Orders</span>
+              <strong>${escapeHtml(scenario.statusHint)}</strong>
+            </div>
+            <h3>${escapeHtml(scenario.order.title)}</h3>
+            <ul class="demo-list">
+              ${scenario.order.items.map(item => `<li>${escapeHtml(item)}</li>`).join('')}
+            </ul>
+            <div class="demo-total-row">
+              <span>Total</span>
+              <strong>${escapeHtml(scenario.order.total)}</strong>
+            </div>
+            <p>${escapeHtml(scenario.order.footer)}</p>
+            <small>${escapeHtml(scenario.order.note)}</small>
+          `
+          : `
+            <div class="demo-card-head">
+              <span>Orders</span>
+              <strong>Waiting</strong>
+            </div>
+            <h3>No ticket created</h3>
+            <p>This scenario will not create an order ticket.</p>
+            <small>Useful for reservation and handoff calls.</small>
+          `;
+      }
+
+      if (reservationCard) {
+        reservationCard.innerHTML = scenario.reservation
+          ? `
+            <div class="demo-card-head">
+              <span>Reservations</span>
+              <strong>${escapeHtml(scenario.statusHint)}</strong>
+            </div>
+            <h3>${escapeHtml(scenario.reservation.title)}</h3>
+            <ul class="demo-list">
+              <li>Guest: ${escapeHtml(scenario.reservation.guest)}</li>
+              <li>Date: ${escapeHtml(scenario.reservation.date)}</li>
+              <li>Time: ${escapeHtml(scenario.reservation.time)}</li>
+              <li>Party: ${escapeHtml(scenario.reservation.party)}</li>
+            </ul>
+            <p>${escapeHtml(scenario.reservation.footer)}</p>
+            <small>${escapeHtml(scenario.reservation.note)}</small>
+          `
+          : `
+            <div class="demo-card-head">
+              <span>Reservations</span>
+              <strong>Standing by</strong>
+            </div>
+            <h3>No table booked</h3>
+            <p>This scenario does not need a booking card.</p>
+            <small>Reservation calls will populate this panel live.</small>
+          `;
+      }
+
+      if (handoffCard) {
+        handoffCard.innerHTML = scenario.handoff
+          ? `
+            <div class="demo-card-head">
+              <span>Handoffs</span>
+              <strong>${escapeHtml(scenario.statusHint)}</strong>
+            </div>
+            <h3>${escapeHtml(scenario.handoff.title)}</h3>
+            <ul class="demo-list">
+              <li>Customer: ${escapeHtml(scenario.handoff.customer)}</li>
+              <li>Urgency: ${escapeHtml(scenario.handoff.urgency)}</li>
+              <li>Reason: ${escapeHtml(scenario.handoff.reason)}</li>
+              <li>Target: ${escapeHtml(scenario.handoff.target)}</li>
+            </ul>
+            <p>${escapeHtml(scenario.handoff.footer)}</p>
+            <small>${escapeHtml(scenario.handoff.note)}</small>
+          `
+          : `
+            <div class="demo-card-head">
+              <span>Handoffs</span>
+              <strong>Idle</strong>
+            </div>
+            <h3>No escalation needed</h3>
+            <p>This scenario resolves without a manager callback.</p>
+            <small>Urgent issues can be routed to SMS or dashboard.</small>
+          `;
+      }
+
+      if (outcomeCard) {
+        outcomeCard.innerHTML = `
+          <div class="demo-card-head">
+            <span>Call outcome</span>
+            <strong>${escapeHtml(scenario.callType)}</strong>
+          </div>
+          <h3>${escapeHtml(scenario.title)}</h3>
+          <p>${escapeHtml(scenario.outcome)}</p>
+          <small>${escapeHtml(scenario.route)}</small>
+        `;
+      }
+    }
+
+    function resetDemo({ preserveSelection = true } = {}) {
+      clearScheduledHandles();
+      isRunning = false;
+      root.classList.remove('is-running');
+      setStartButtonState('Start live demo', false);
+      if (timerLabel) {
+        timerLabel.textContent = '00:00';
+      }
+      if (stageLabel) {
+        stageLabel.textContent = 'Ready to start';
+      }
+      setStatus('Idle', 'idle');
+      if (transcriptFeed) {
+        transcriptFeed.innerHTML = '';
+      }
+      renderScenarioCards(currentScenario());
+      if (!preserveSelection) {
+        if (scenarioSelect) scenarioSelect.value = 'order';
+        if (languageSelect) languageSelect.value = 'en';
+      }
+    }
+
+    function startDemo() {
+      if (isRunning) return;
+      const scenario = currentScenario();
+      const language = currentLanguage();
+      const locale = language.locale;
+      clearScheduledHandles();
+      isRunning = true;
+      root.classList.add('is-running');
+      setStartButtonState('Live demo running', true);
+      if (stageLabel) {
+        stageLabel.textContent = `${scenario.callType} connecting`;
+      }
+      if (statusPill) {
+        setStatus('Ringing', 'ringing');
+      }
+      if (transcriptFeed) {
+        transcriptFeed.innerHTML = '';
+      }
+      renderScenarioCards(scenario);
+      playStartChime();
+      appendTranscript('system', 'Incoming call routed through the live gateway.');
+
+      timerStart = Date.now();
+      timerHandle = setInterval(() => {
+        if (!timerLabel) return;
+        timerLabel.textContent = formatDuration((Date.now() - timerStart) / 1000);
+      }, 1000);
+      if (timerLabel) {
+        timerLabel.textContent = '00:00';
+      }
+
+      const setUpdate = (type) => {
+        if (!type) return;
+        setStatus(type === 'order' ? 'POS syncing' : type === 'reservation' ? 'Booking live' : 'Handoff sent', type);
+      };
+
+      scenario.transcript.forEach((line, index) => {
+        const delay = 600 + (index * 2200);
+        const handle = setTimeout(() => {
+          if (!isRunning) return;
+          const speaker = line.speaker || 'customer';
+          const text = typeof line.text === 'function' ? line.text(language) : line.text;
+          appendTranscript(speaker, text, speaker === 'agent' ? 'Xorvian' : '');
+          if (speaker === 'agent') {
+            speakLine(text, locale);
+          }
+          if (index === 0 && stageLabel) {
+            stageLabel.textContent = 'Live conversation in progress';
+            setStatus('Connected', 'live');
+          }
+          if (index === scenario.transcript.length - 1) {
+            if (stageLabel) {
+              stageLabel.textContent = 'Call completed';
+            }
+            setStatus('Complete', 'complete');
+            if (timerHandle) {
+              clearInterval(timerHandle);
+              timerHandle = null;
+            }
+            setStartButtonState('Replay live demo', false);
+            root.classList.remove('is-running');
+            isRunning = false;
+          }
+        }, delay);
+        scheduledHandles.push(handle);
+      });
+
+      scenario.updates.forEach(update => {
+        const handle = setTimeout(() => {
+          if (!isRunning) return;
+          setUpdate(update.type);
+          renderScenarioCards(scenario);
+        }, update.delay);
+        scheduledHandles.push(handle);
+      });
+    }
+
+    if (scenarioSelect) {
+      scenarioSelect.addEventListener('change', () => resetDemo());
+    }
+
+    if (languageSelect) {
+      languageSelect.addEventListener('change', () => resetDemo());
+    }
+
+    document.querySelectorAll('[data-demo-action="start"]').forEach(button => {
+      button.addEventListener('click', startDemo);
+    });
+
+    document.querySelectorAll('[data-demo-action="reset"]').forEach(button => {
+      button.addEventListener('click', () => resetDemo({ preserveSelection: true }));
+    });
+
+    resetDemo();
+  }
+
+  initLiveDemoPage();
+
   async function apiRequest(endpoint, options = {}) {
     const headers = {
       'Content-Type': 'application/json',
@@ -170,56 +662,11 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 
-  // --- Premium Voice Preview Experience ---
+  // --- Live Demo Launch ---
   const experienceButtons = document.querySelectorAll('.btn-experience');
-  const audioContextClass = window.AudioContext || window.webkitAudioContext;
-
   experienceButtons.forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      e.preventDefault();
-      
-      // Visual Feedback
-      const originalText = btn.innerHTML;
-      btn.innerHTML = `<span class="logo-dot"></span> Listening / Playing...`;
-      btn.style.opacity = '0.7';
-
-      // Play synthesized greeting audio beep as preview
-      try {
-        const audioCtx = new audioContextClass();
-        
-        // Synthesizing a short pleasant futuristic sound effect
-        const playTone = (freq, type, duration, startTime) => {
-          const osc = audioCtx.createOscillator();
-          const gainNode = audioCtx.createGain();
-          
-          osc.type = type;
-          osc.frequency.setValueAtTime(freq, startTime);
-          
-          gainNode.gain.setValueAtTime(0.15, startTime);
-          gainNode.gain.exponentialRampToValueAtTime(0.0001, startTime + duration);
-          
-          osc.connect(gainNode);
-          gainNode.connect(audioCtx.destination);
-          
-          osc.start(startTime);
-          osc.stop(startTime + duration);
-        };
-
-        // Synthesize voice notification chime
-        const now = audioCtx.currentTime;
-        playTone(392, 'sine', 0.15, now);
-        playTone(523.25, 'sine', 0.25, now + 0.12);
-        playTone(659.25, 'sine', 0.35, now + 0.24);
-
-      } catch (err) {
-        console.warn('Audio Context API not supported or user gesture needed', err);
-      }
-
-      setTimeout(() => {
-        btn.innerHTML = originalText;
-        btn.style.opacity = '1';
-        alert('Voice AI Demo Call simulation successfully triggered! This voice sounds clean and operates at <1s latency.');
-      }, 1000);
+    btn.addEventListener('click', () => {
+      window.location.href = 'live-demo.html';
     });
   });
 
