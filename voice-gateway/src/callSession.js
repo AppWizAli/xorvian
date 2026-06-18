@@ -72,7 +72,7 @@ export class CallSession {
     this.to = params.to || startEvent.start?.to || '';
 
     this.context = await fetchRestaurantContext({
-      restaurantId: this.restaurantId,
+      restaurantId: this.restaurantId || config.defaultRestaurantId,
       callSid: this.callSid,
       from: this.from,
       to: this.to,

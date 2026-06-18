@@ -9,6 +9,7 @@ $data = read_json_body();
 require_n8n_secret($data);
 
 $toPhone = clean_string($data, 'to', 40);
+$toPhoneDigits = preg_replace('/\D+/', '', $toPhone);
 $restaurantId = clean_string($data, 'restaurantId', 80);
 $webhookPath = clean_string($data, 'webhookPath', 160);
 
@@ -28,9 +29,16 @@ $params = [];
 $where = [];
 
 if ($toPhone !== '') {
-    $where[] = '(agent_settings.twilio_phone = :to_phone_agent OR restaurant_profiles.business_phone = :to_phone_business)';
+    $phoneExprAgent = "REPLACE(REPLACE(REPLACE(REPLACE(agent_settings.twilio_phone, '+', ''), ' ', ''), '-', ''), '(', '')";
+    $phoneExprBusiness = "REPLACE(REPLACE(REPLACE(REPLACE(restaurant_profiles.business_phone, '+', ''), ' ', ''), '-', ''), '(', '')";
+    $where[] = '(agent_settings.twilio_phone = :to_phone_agent
+        OR restaurant_profiles.business_phone = :to_phone_business
+        OR ' . $phoneExprAgent . ' = :to_phone_digits_agent
+        OR ' . $phoneExprBusiness . ' = :to_phone_digits_business)';
     $params[':to_phone_agent'] = $toPhone;
     $params[':to_phone_business'] = $toPhone;
+    $params[':to_phone_digits_agent'] = $toPhoneDigits;
+    $params[':to_phone_digits_business'] = $toPhoneDigits;
 }
 
 if ($restaurantId !== '') {
