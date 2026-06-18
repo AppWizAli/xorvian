@@ -29,7 +29,6 @@ export const config = {
   twilioWhatsappFrom: env('TWILIO_WHATSAPP_FROM'),
   xorvianApiBase: env('XORVIAN_API_BASE').replace(/\/+$/, ''),
   xorvianSharedSecret: env('XORVIAN_SHARED_SECRET'),
-  defaultRestaurantId: env('DEFAULT_RESTAURANT_ID'),
   defaultLanguage: env('DEFAULT_LANGUAGE', 'en-CA'),
   defaultTimezone: env('DEFAULT_TIMEZONE', 'America/Toronto'),
   defaultCurrency: env('DEFAULT_CURRENCY', 'CAD'),
