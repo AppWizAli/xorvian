@@ -60,47 +60,33 @@
     </section>
 
     <section class="live-chat-demo-section" aria-labelledby="live-chat-demo-title">
-      <div class="container live-chat-demo-layout">
-        <div class="live-chat-demo-copy">
+      <div class="container live-chat-demo-shell">
+        <div class="live-chat-demo-heading">
           <span class="section-label">Live Chat Example</span>
-          <h2 id="live-chat-demo-title">Test the same restaurant agent in chat.</h2>
-          <p>
-            See how Xorvian can answer menu questions, take orders, and hand off special requests before a customer ever calls.
-          </p>
-          <div class="chat-demo-tags" aria-label="Example chat tasks">
-            <span>Menu questions</span>
-            <span>Order capture</span>
-            <span>Reservation help</span>
-          </div>
+          <h2 id="live-chat-demo-title">Watch a chat order finish itself.</h2>
+          <button class="btn btn-primary chat-demo-start" type="button" data-start-chat-demo>
+            Test live chat
+          </button>
         </div>
 
-        <aside class="live-chat-card" aria-label="Live chat conversation example">
+        <aside class="live-chat-card" aria-label="Live chat demo">
           <div class="chat-card-topbar">
             <div>
               <span class="chat-status-dot"></span>
               <strong>Xorvian Chat</strong>
             </div>
-            <span>Online</span>
+            <span data-chat-demo-status>Ready</span>
           </div>
 
-          <div class="chat-thread">
-            <div class="chat-bubble chat-bubble-customer">
-              Do you have broasted chicken meals for pickup?
-            </div>
-            <div class="chat-bubble chat-bubble-agent">
-              Yes. I can help with pickup. Would you like a single meal, family box, or wings?
-            </div>
-            <div class="chat-bubble chat-bubble-customer">
-              Family box, and can I reserve it for 7 PM?
-            </div>
-            <div class="chat-bubble chat-bubble-agent">
-              Absolutely. I'll collect your name and phone, then save the request for the restaurant.
+          <div class="chat-thread" data-chat-demo-thread>
+            <div class="chat-empty-state">
+              Click the button to run a quick order demo.
             </div>
           </div>
 
           <div class="chat-input-preview">
-            <span>Ask about menu, order, or reservation...</span>
-            <button type="button">Send</button>
+            <span data-chat-demo-input>Family broasted box for pickup...</span>
+            <button type="button" data-start-chat-demo-secondary>Send</button>
           </div>
         </aside>
       </div>
@@ -125,6 +111,73 @@
         } catch (error) {
           window.location.href = `tel:${demoNumber}`;
         }
+      });
+    })();
+
+    (() => {
+      const thread = document.querySelector('[data-chat-demo-thread]');
+      const status = document.querySelector('[data-chat-demo-status]');
+      const input = document.querySelector('[data-chat-demo-input]');
+      const buttons = document.querySelectorAll('[data-start-chat-demo], [data-start-chat-demo-secondary]');
+      if (!thread || !status || !input || !buttons.length) return;
+
+      const script = [
+        ['customer', 'Hi, I want a family broasted chicken box for pickup.'],
+        ['agent', 'Sure. Family box for pickup. What name should I put on the order?'],
+        ['customer', 'Ali. Pickup around 7 PM.'],
+        ['agent', 'Perfect. I have a family broasted box for Ali, pickup at 7 PM. Should I confirm it?'],
+        ['customer', 'Yes, confirm it.'],
+        ['agent', 'Order confirmed. The restaurant has your pickup request and phone number.']
+      ];
+
+      let running = false;
+      let timers = [];
+
+      function clearTimers() {
+        timers.forEach((timer) => clearTimeout(timer));
+        timers = [];
+      }
+
+      function addBubble(role, text) {
+        const bubble = document.createElement('div');
+        bubble.className = `chat-bubble chat-bubble-${role}`;
+        bubble.textContent = text;
+        thread.appendChild(bubble);
+        thread.scrollTop = thread.scrollHeight;
+      }
+
+      function setButtons(text, disabled) {
+        buttons.forEach((button) => {
+          button.textContent = text;
+          button.disabled = disabled;
+        });
+      }
+
+      function startDemo() {
+        if (running) return;
+        running = true;
+        clearTimers();
+        thread.innerHTML = '';
+        status.textContent = 'Typing';
+        input.textContent = 'Running demo order...';
+        setButtons('Running...', true);
+
+        script.forEach(([role, text], index) => {
+          const timer = setTimeout(() => {
+            addBubble(role, text);
+            if (index === script.length - 1) {
+              status.textContent = 'Complete';
+              input.textContent = 'Order completed in demo';
+              setButtons('Replay live chat', false);
+              running = false;
+            }
+          }, 500 + index * 950);
+          timers.push(timer);
+        });
+      }
+
+      buttons.forEach((button) => {
+        button.addEventListener('click', startDemo);
       });
     })();
   </script>
