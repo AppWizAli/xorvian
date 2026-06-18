@@ -2659,6 +2659,151 @@ footer {
   color: #dc2626;
 }
 
+.forwarding-setup-panel {
+  background: #fff;
+  border: 1px solid #e8ebf2;
+  border-radius: 10px;
+  box-shadow: 0 8px 20px rgba(15, 23, 42, 0.025);
+  margin-bottom: 12px;
+  overflow: hidden;
+}
+
+.forwarding-hero {
+  align-items: stretch;
+  background: linear-gradient(135deg, #fbfcff 0%, #f3f0ff 100%);
+  border-bottom: 1px solid #e8ebf2;
+  display: grid;
+  gap: 14px;
+  grid-template-columns: minmax(0, 1fr) minmax(230px, 300px);
+  padding: 16px;
+}
+
+.forwarding-hero .eyebrow {
+  color: #7c3aed;
+  display: block;
+  font-size: 11px;
+  font-weight: 900;
+  letter-spacing: 0.12em;
+  margin-bottom: 6px;
+  text-transform: uppercase;
+}
+
+.forwarding-hero h3,
+.forwarding-steps h4 {
+  color: #111827;
+  font-family: Inter, Arial, sans-serif;
+  font-size: 16px;
+  font-weight: 900;
+  letter-spacing: 0;
+  margin-bottom: 6px;
+}
+
+.forwarding-hero p {
+  color: #6b7280;
+  font-size: 12px;
+  max-width: 760px;
+}
+
+.forwarding-number-card {
+  background: #fff;
+  border: 1px solid #e4e7ef;
+  border-radius: 10px;
+  display: grid;
+  gap: 8px;
+  padding: 12px;
+}
+
+.forwarding-number-card span {
+  color: #6b7280;
+  font-size: 11px;
+  font-weight: 800;
+}
+
+.forwarding-number-card strong {
+  color: #111827;
+  font-size: 18px;
+  overflow-wrap: anywhere;
+}
+
+.forwarding-number-card .compact-button {
+  width: max-content;
+}
+
+.forwarding-grid {
+  display: grid;
+  gap: 12px;
+  grid-template-columns: minmax(0, 1fr) minmax(260px, 0.8fr);
+  padding: 14px;
+}
+
+.forwarding-steps {
+  background: #fbfcff;
+  border: 1px solid #edf0f6;
+  border-radius: 10px;
+  padding: 14px;
+}
+
+.forwarding-steps ol {
+  color: #374151;
+  display: grid;
+  font-size: 12px;
+  gap: 8px;
+  margin: 10px 0;
+  padding-left: 18px;
+}
+
+.forwarding-steps li::marker {
+  color: #7c3aed;
+  font-weight: 900;
+}
+
+.forwarding-steps strong {
+  color: #111827;
+}
+
+.forwarding-checklist {
+  display: grid;
+  gap: 8px;
+}
+
+.forwarding-check-item {
+  background: #fbfcff;
+  border: 1px solid #edf0f6;
+  border-radius: 10px;
+  display: grid;
+  gap: 4px;
+  padding: 10px;
+}
+
+.forwarding-check-item span {
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 900;
+  justify-self: start;
+  padding: 3px 7px;
+  text-transform: uppercase;
+}
+
+.forwarding-check-item.is-ready span {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.forwarding-check-item.is-pending span {
+  background: #fff7ed;
+  color: #c2410c;
+}
+
+.forwarding-check-item strong {
+  color: #111827;
+  font-size: 12px;
+}
+
+.forwarding-check-item small {
+  color: #6b7280;
+  font-size: 11px;
+}
+
 .form-action-row {
   align-items: center;
   display: flex;
@@ -3199,6 +3344,11 @@ footer {
     grid-template-columns: 1fr;
   }
 
+  .forwarding-hero,
+  .forwarding-grid {
+    grid-template-columns: 1fr;
+  }
+
   .config-read-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -3263,8 +3413,19 @@ footer {
   .customer-panel,
   .customer-form,
   .config-read-panel,
+  .forwarding-setup-panel,
   .customer-crm-detail {
     border-radius: 8px;
+  }
+
+  .forwarding-hero,
+  .forwarding-grid,
+  .forwarding-steps {
+    padding: 12px;
+  }
+
+  .forwarding-number-card .compact-button {
+    width: 100%;
   }
 
   .config-read-grid {

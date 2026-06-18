@@ -813,6 +813,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const assistantSummaryGrid = document.getElementById('assistant-summary-grid');
     const menuSummaryGrid = document.getElementById('menu-summary-grid');
     const workflowSummaryGrid = document.getElementById('workflow-summary-grid');
+    const forwardingAssignedNumber = document.getElementById('forwarding-assigned-number');
+    const forwardingChecklist = document.getElementById('forwarding-checklist');
+    const copyForwardingNumberButton = document.querySelector('[data-copy-forwarding-number]');
     const editSectionButtons = document.querySelectorAll('[data-edit-section]');
     const cancelEditButtons = document.querySelectorAll('[data-cancel-edit]');
     const ordersTableBody = document.getElementById('orders-table-body');
@@ -827,6 +830,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const RESERVATION_STATUSES = ['requested', 'confirmed', 'modified', 'cancelled', 'completed'];
     let activeCustomerPhone = '';
     let latestCustomers = [];
+    let latestDashboardSummary = {};
 
     if (apiEnvironment) {
       const isLiveApi = API_BASE.includes('aliportfolio.org');
@@ -943,13 +947,60 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function renderWorkflowSummary() {
+      const assignedNumber = formValue(agentSettingsForm, 'twilioPhone', '');
+      const businessPhone = formValue(profileForm, 'businessPhone', '');
+      const hasAssignedNumber = Boolean(assignedNumber);
+      const hasBusinessPhone = Boolean(businessPhone);
+      const hasTestCall = Number(latestDashboardSummary.calls || 0) > 0;
+
       renderSummaryGrid(workflowSummaryGrid, [
-        { label: 'Twilio Phone', value: formValue(agentSettingsForm, 'twilioPhone') },
+        { label: 'Twilio Phone', value: assignedNumber || 'Not set' },
         { label: 'Gateway Webhook Path', value: formValue(agentSettingsForm, 'n8nWebhookPath') },
         { label: 'Optional n8n URL', value: formValue(agentSettingsForm, 'n8nWebhookUrl') },
         { label: 'Order Sheet ID', value: formValue(agentSettingsForm, 'orderSheetId') },
         { label: 'Reservation Sheet ID', value: formValue(agentSettingsForm, 'reservationSheetId') }
       ]);
+
+      if (forwardingAssignedNumber) {
+        forwardingAssignedNumber.textContent = assignedNumber || 'Not set';
+      }
+
+      if (copyForwardingNumberButton) {
+        copyForwardingNumberButton.disabled = !assignedNumber;
+      }
+
+      if (forwardingChecklist) {
+        const items = [
+          {
+            ok: hasBusinessPhone,
+            label: 'Restaurant number saved',
+            value: businessPhone || 'Add business phone in Restaurant Profile'
+          },
+          {
+            ok: hasAssignedNumber,
+            label: 'Xorvian forwarding number assigned',
+            value: assignedNumber || 'Add Twilio phone in AI Assistant'
+          },
+          {
+            ok: hasAssignedNumber,
+            label: 'Gateway call matching ready',
+            value: hasAssignedNumber ? 'Calls match by Twilio To number' : 'Waiting for assigned number'
+          },
+          {
+            ok: hasTestCall,
+            label: 'Test call completed',
+            value: hasTestCall ? `${latestDashboardSummary.calls} call${Number(latestDashboardSummary.calls) === 1 ? '' : 's'} logged` : 'Place one test call after forwarding'
+          }
+        ];
+
+        forwardingChecklist.innerHTML = items.map(item => `
+          <div class="forwarding-check-item ${item.ok ? 'is-ready' : 'is-pending'}">
+            <span>${item.ok ? 'Ready' : 'Todo'}</span>
+            <strong>${escapeHtml(item.label)}</strong>
+            <small>${escapeHtml(item.value)}</small>
+          </div>
+        `).join('');
+      }
     }
 
     function renderMenuSummary() {
@@ -1561,6 +1612,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const payload = await apiRequest('dashboard_summary.php');
         const user = payload.user || JSON.parse(localStorage.getItem('xorvianUser') || 'null');
         const summary = payload.summary || {};
+        latestDashboardSummary = summary;
 
         if (user) {
           dashboardName.textContent = `${user.firstName} ${user.secondName}`;
@@ -1581,6 +1633,27 @@ document.addEventListener('DOMContentLoaded', () => {
         clearAuthSession();
         window.location.href = pagePath('login');
       }
+    }
+
+    if (copyForwardingNumberButton) {
+      copyForwardingNumberButton.addEventListener('click', async () => {
+        const number = formValue(agentSettingsForm, 'twilioPhone', '');
+        if (!number) return;
+
+        try {
+          await navigator.clipboard.writeText(number);
+          const original = copyForwardingNumberButton.textContent;
+          copyForwardingNumberButton.textContent = 'Copied';
+          setTimeout(() => {
+            copyForwardingNumberButton.textContent = original;
+          }, 1200);
+        } catch (error) {
+          copyForwardingNumberButton.textContent = 'Copy failed';
+          setTimeout(() => {
+            copyForwardingNumberButton.textContent = 'Copy number';
+          }, 1200);
+        }
+      });
     }
 
     async function loadMenu() {
@@ -1974,6 +2047,7 @@ Fries
           fillProfile(response.profile);
           renderProfileSummary();
           renderMenuSummary();
+          renderWorkflowSummary();
           closeEditableSection('restaurant-profile-form');
           showDashboardMessage('Restaurant profile saved.', 'success');
         } catch (error) {

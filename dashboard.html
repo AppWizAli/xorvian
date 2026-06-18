@@ -519,6 +519,39 @@ Burger
             <div class="config-empty">Loading gateway settings...</div>
           </div>
         </article>
+
+        <article class="forwarding-setup-panel" id="number-forwarding-panel">
+          <div class="forwarding-hero">
+            <div>
+              <span class="eyebrow">Existing number forwarding</span>
+              <h3>Keep your restaurant number. Forward missed calls to Xorvian.</h3>
+              <p>Your customers call the same number they already know. Your provider forwards calls to the assigned Xorvian number, and the voice gateway matches the restaurant by the Twilio number.</p>
+            </div>
+            <div class="forwarding-number-card">
+              <span>Assigned Xorvian number</span>
+              <strong id="forwarding-assigned-number">Not set</strong>
+              <button class="compact-button ghost" type="button" data-copy-forwarding-number>Copy number</button>
+            </div>
+          </div>
+
+          <div class="forwarding-grid">
+            <div class="forwarding-steps">
+              <h4>Setup steps</h4>
+              <ol>
+                <li>Enter the assigned Twilio/Xorvian number in AI Assistant settings.</li>
+                <li>Ask your phone provider to forward unanswered or busy calls to that number.</li>
+                <li>Place a test call to your existing restaurant number.</li>
+                <li>Confirm the call appears in Call Logs.</li>
+              </ol>
+              <p class="muted-copy">Common provider codes: dial <strong>*72</strong> for immediate forwarding or <strong>*61</strong> for no-answer forwarding, then enter the Xorvian number. Codes vary by carrier.</p>
+            </div>
+
+            <div class="forwarding-checklist" id="forwarding-checklist">
+              <div class="config-empty">Loading forwarding checklist...</div>
+            </div>
+          </div>
+        </article>
+
         <form class="customer-form editable-section is-hidden" id="workflow-shortcut-form">
           <div class="form-row">
             <div class="form-group">
