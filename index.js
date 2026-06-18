@@ -570,32 +570,39 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     async function loadOperationalTables() {
-      setTableMessage(ordersTableBody, 5, 'Loading orders...');
-      setTableMessage(reservationsTableBody, 6, 'Loading reservations...');
-      setTableMessage(callsTableBody, 5, 'Loading call logs...');
+      try {
+        setTableMessage(ordersTableBody, 5, 'Loading orders...');
+        setTableMessage(reservationsTableBody, 6, 'Loading reservations...');
+        setTableMessage(callsTableBody, 5, 'Loading call logs...');
 
-      const [ordersResult, reservationsResult, callsResult] = await Promise.allSettled([
-        apiRequest('orders.php'),
-        apiRequest('reservations.php'),
-        apiRequest('call_logs.php')
-      ]);
+        const [ordersResult, reservationsResult, callsResult] = await Promise.allSettled([
+          apiRequest('orders.php'),
+          apiRequest('reservations.php'),
+          apiRequest('call_logs.php')
+        ]);
 
-      if (ordersResult.status === 'fulfilled') {
-        renderOrders(ordersResult.value.orders || []);
-      } else {
-        setTableMessage(ordersTableBody, 5, ordersResult.reason.message || 'Could not load orders.', 'error');
-      }
+        if (ordersResult.status === 'fulfilled') {
+          renderOrders(ordersResult.value.orders || []);
+        } else {
+          setTableMessage(ordersTableBody, 5, ordersResult.reason.message || 'Could not load orders.', 'error');
+        }
 
-      if (reservationsResult.status === 'fulfilled') {
-        renderReservations(reservationsResult.value.reservations || []);
-      } else {
-        setTableMessage(reservationsTableBody, 6, reservationsResult.reason.message || 'Could not load reservations.', 'error');
-      }
+        if (reservationsResult.status === 'fulfilled') {
+          renderReservations(reservationsResult.value.reservations || []);
+        } else {
+          setTableMessage(reservationsTableBody, 6, reservationsResult.reason.message || 'Could not load reservations.', 'error');
+        }
 
-      if (callsResult.status === 'fulfilled') {
-        renderCalls(callsResult.value.calls || []);
-      } else {
-        setTableMessage(callsTableBody, 5, callsResult.reason.message || 'Could not load call logs.', 'error');
+        if (callsResult.status === 'fulfilled') {
+          renderCalls(callsResult.value.calls || []);
+        } else {
+          setTableMessage(callsTableBody, 5, callsResult.reason.message || 'Could not load call logs.', 'error');
+        }
+      } catch (error) {
+        const message = error.message || 'Could not load operational data.';
+        setTableMessage(ordersTableBody, 5, message, 'error');
+        setTableMessage(reservationsTableBody, 6, message, 'error');
+        setTableMessage(callsTableBody, 5, message, 'error');
       }
     }
 
@@ -662,9 +669,15 @@ document.addEventListener('DOMContentLoaded', () => {
               return `${category.name}\n${items}`;
             }).join('\n\n');
           }
+        } else if (menuMessage) {
+          menuMessage.textContent = 'No menu saved yet. Add menu items and save them here.';
+          menuMessage.className = 'auth-message';
         }
       } catch (error) {
-        // Menu is optional during early onboarding.
+        if (menuMessage) {
+          menuMessage.textContent = `Menu could not load: ${error.message}`;
+          menuMessage.className = 'auth-message error';
+        }
       }
     }
 
@@ -784,7 +797,7 @@ Fries
           }
 
           menuForm.elements.menuJson.value = JSON.stringify(categories, null, 2);
-          setMenuConverterStatus(`Converted ${categories.length} categories to workflow JSON.`, 'success');
+          setMenuConverterStatus(`Converted ${categories.length} categories to gateway menu JSON.`, 'success');
         } catch (error) {
           setMenuConverterStatus(error.message, 'error');
         }
@@ -801,8 +814,8 @@ Fries
         payload.reservationEnabled = agentSettingsForm.elements.reservationEnabled?.checked || false;
         payload.openaiTemperature = 0.3;
         payload.voiceProvider = 'elevenlabs';
-        payload.twilioLanguage = payload.languageCode || 'en-US';
-        payload.outputFormat = 'mp3_44100_128';
+        payload.twilioLanguage = payload.languageCode || 'en-CA';
+        payload.outputFormat = 'ulaw_8000';
         payload.orderSheetName = 'Sheet1';
         payload.reservationSheetName = 'Sheet1';
         payload.cloudinaryFolder = 'xorvian-audio';
@@ -813,7 +826,7 @@ Fries
             agentSettingsMessage.className = 'auth-message';
           }
           if (workflowSettingsMessage) {
-            workflowSettingsMessage.textContent = 'Saving workflow settings...';
+            workflowSettingsMessage.textContent = 'Saving gateway settings...';
             workflowSettingsMessage.className = 'auth-message';
           }
           await apiRequest('agent_settings.php', {
@@ -825,7 +838,7 @@ Fries
             agentSettingsMessage.className = 'auth-message success';
           }
           if (workflowSettingsMessage) {
-            workflowSettingsMessage.textContent = 'Workflow settings saved.';
+            workflowSettingsMessage.textContent = 'Gateway settings saved.';
             workflowSettingsMessage.className = 'auth-message success';
           }
           loadDashboard();

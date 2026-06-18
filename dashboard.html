@@ -41,7 +41,7 @@
           <span>◌</span><strong>Call Logs</strong>
         </button>
         <button class="customer-nav-item" type="button" data-dashboard-view="workflow">
-          <span>⌁</span><strong>Workflow</strong>
+          <span>⌁</span><strong>Voice Gateway</strong>
         </button>
         <button class="customer-nav-item" type="button" data-dashboard-view="settings">
           <span>⚙</span><strong>Settings</strong>
@@ -116,20 +116,20 @@
               <button type="button" data-dashboard-view="profile"><span>01</span> Save restaurant profile</button>
               <button type="button" data-dashboard-view="menu"><span>02</span> Add menu and knowledge base</button>
               <button type="button" data-dashboard-view="assistant"><span>03</span> Choose AI voice and behavior</button>
-              <button type="button" data-dashboard-view="workflow"><span>04</span> Connect phone and workflow</button>
+              <button type="button" data-dashboard-view="workflow"><span>04</span> Connect phone gateway</button>
             </div>
           </article>
 
           <article class="customer-panel">
             <div class="panel-head">
               <h3>Assistant Defaults</h3>
-              <span>Workflow ready</span>
+              <span>Gateway ready</span>
             </div>
             <div class="setting-list">
-              <div><span>Language</span><strong>English / en-US</strong></div>
-              <div><span>OpenAI</span><strong>gpt-4o-mini</strong></div>
-              <div><span>Voice</span><strong>eleven_flash_v2</strong></div>
-              <div><span>Audio</span><strong>Cloudinary MP3</strong></div>
+              <div><span>Language</span><strong>English / en-CA</strong></div>
+              <div><span>OpenAI</span><strong>gpt-realtime-2</strong></div>
+              <div><span>Voice</span><strong>eleven_flash_v2_5</strong></div>
+              <div><span>Audio</span><strong>ElevenLabs streaming</strong></div>
             </div>
           </article>
         </div>
@@ -219,14 +219,14 @@
             </div>
             <div class="form-group">
               <label class="form-label" for="language-code">Language Code</label>
-              <input class="form-input" id="language-code" name="languageCode" type="text" placeholder="en-US">
+              <input class="form-input" id="language-code" name="languageCode" type="text" placeholder="en-CA">
             </div>
           </div>
 
           <div class="form-row">
             <div class="form-group">
               <label class="form-label" for="openai-model">OpenAI Model</label>
-              <input class="form-input" id="openai-model" name="openaiModel" type="text" placeholder="gpt-4o-mini">
+              <input class="form-input" id="openai-model" name="openaiModel" type="text" placeholder="gpt-realtime-2">
             </div>
             <div class="form-group">
               <label class="form-label" for="openai-max-tokens">Max Tokens</label>
@@ -241,7 +241,7 @@
             </div>
             <div class="form-group">
               <label class="form-label" for="voice-model">ElevenLabs Model</label>
-              <input class="form-input" id="voice-model" name="voiceModel" type="text" placeholder="eleven_flash_v2">
+              <input class="form-input" id="voice-model" name="voiceModel" type="text" placeholder="eleven_flash_v2_5">
             </div>
           </div>
 
@@ -353,7 +353,7 @@ Burger
         <div class="panel-head page-panel-head">
           <div>
             <h2>Orders</h2>
-            <p>AI phone orders saved from the workflow appear here automatically.</p>
+            <p>AI phone orders saved from the voice gateway appear here automatically.</p>
           </div>
           <button class="compact-button" type="button" data-refresh-operational>Refresh</button>
         </div>
@@ -397,21 +397,21 @@ Burger
         </div>
       </section>
 
-      <section class="customer-view" id="view-workflow" data-view-title="Workflow">
+      <section class="customer-view" id="view-workflow" data-view-title="Voice Gateway">
         <div class="panel-head page-panel-head">
           <div>
-            <h2>Workflow Connection</h2>
-            <p>Connect the customer's n8n webhook and Google Sheet save mappings.</p>
+            <h2>Voice Gateway Connection</h2>
+            <p>Connect the customer's Twilio number to the realtime voice gateway. n8n is optional for background automations.</p>
           </div>
         </div>
         <form class="customer-form" id="workflow-shortcut-form">
           <div class="form-row">
             <div class="form-group">
-              <label class="form-label" for="n8n-webhook-path">n8n Webhook Path</label>
+              <label class="form-label" for="n8n-webhook-path">Optional n8n Webhook Path</label>
               <input class="form-input" id="n8n-webhook-path" name="n8nWebhookPath" type="text" placeholder="7d1e2d95-94bc-4f30-8b40-39a01a8415ca" form="agent-settings-form">
             </div>
             <div class="form-group">
-              <label class="form-label" for="n8n-webhook-url">Full n8n Webhook URL</label>
+              <label class="form-label" for="n8n-webhook-url">Optional n8n Webhook URL</label>
               <input class="form-input" id="n8n-webhook-url" name="n8nWebhookUrl" type="url" placeholder="https://.../webhook/..." form="agent-settings-form">
             </div>
           </div>
@@ -425,7 +425,7 @@ Burger
               <input class="form-input" id="reservation-sheet-id" name="reservationSheetId" type="text" placeholder="Google Sheet ID" form="agent-settings-form">
             </div>
           </div>
-          <button class="compact-button primary-wide" type="submit">Save Workflow Settings</button>
+          <button class="compact-button primary-wide" type="submit">Save Gateway Settings</button>
           <p class="auth-message" id="workflow-settings-message" aria-live="polite"></p>
         </form>
       </section>
@@ -448,7 +448,7 @@ Burger
           </article>
           <article class="customer-panel">
             <h3>Support</h3>
-            <p class="muted-copy">Need help connecting Twilio, ElevenLabs, Cloudinary, OpenAI, or n8n?</p>
+            <p class="muted-copy">Need help connecting Twilio, ElevenLabs, OpenAI, or optional n8n automations?</p>
             <a class="compact-button ghost" href="contact.html">Contact Support</a>
           </article>
         </div>
