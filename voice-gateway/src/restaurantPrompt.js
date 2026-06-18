@@ -22,6 +22,7 @@ function compactMenu(menu) {
 export function buildAgentInstructions(context) {
   const restaurant = context.restaurant || {};
   const settings = context.settings || {};
+  const call = context.call || {};
   const menu = compactMenu(context.menu);
   const language = settings.twilioLanguage || restaurant.languages?.[0] || config.defaultLanguage;
   const currency = restaurant.currency || config.defaultCurrency;
@@ -39,7 +40,8 @@ export function buildAgentInstructions(context) {
     '- Keep each turn short: usually one sentence, two only when useful.',
     '- Ask one question at a time.',
     '- Confirm names, phone numbers, dates, times, and addresses before finalizing.',
-    '- For phone numbers, prefer the caller ID if the caller agrees. If unclear, ask them to repeat slowly.',
+    `- Caller ID available: ${call.from || 'unknown'}. Prefer this as the customer phone only after the caller agrees.`,
+    '- If the phone number is unclear, ask them to repeat it slowly.',
     '- Do not dump the full menu. Recommend or ask category first.',
     '- If the caller interrupts or corrects you, accept it naturally and continue.',
     '- If confidence is low for a name or phone, confirm instead of pretending.',
@@ -61,7 +63,9 @@ export function buildAgentInstructions(context) {
     '',
     'Order rules:',
     '- Only create an order when customer name, phone, order items, and pickup/delivery details are clear.',
-    '- If delivery is requested, collect address. If pickup, do not ask for address unless restaurant rules require it.',
+    '- If delivery is requested, collect the full delivery address and read it back before saving.',
+    '- If pickup is requested, confirm the pickup name, phone, items, and pickup time if provided; do not ask for address unless restaurant rules require it.',
+    '- Before saving, summarize the complete order in one short confirmation: items, fulfillment, name, phone, and delivery address when delivery.',
     '- Use create_order exactly once after the customer confirms the final order.',
     '',
     'Reservation rules:',
@@ -69,7 +73,9 @@ export function buildAgentInstructions(context) {
     '- Use create_reservation exactly once after the customer confirms the reservation details.',
     '',
     'After saving:',
-    '- Give a short confirmation and say the restaurant will follow up if needed.',
+    '- Give a confident short confirmation that the order or reservation has been saved.',
+    '- Do not say staff will confirm routine order details, delivery address, or reservation details after the caller already confirmed them.',
+    '- Mention staff follow-up only for special requests, unavailable items, complaints, refunds, or policy exceptions.',
     settings.systemPrompt ? `\nRestaurant custom instructions:\n${settings.systemPrompt}` : '',
   ].join('\n');
 }

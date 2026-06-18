@@ -48,7 +48,13 @@ export class CallSession {
     this.restaurantId = this.context.restaurantId || this.restaurantId;
 
     const settings = this.context.settings || {};
-    const instructions = buildAgentInstructions(this.context);
+    const instructions = buildAgentInstructions({
+      ...this.context,
+      call: {
+        from: this.from,
+        to: this.to,
+      },
+    });
 
     this.tts = new ElevenLabsStream({
       voiceId: settings.voiceId || config.elevenLabsDefaultVoiceId,
