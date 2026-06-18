@@ -26,10 +26,10 @@ $data = read_json_body();
 
 $agentFields = [
     ':agent_name' => clean_string($data, 'agentName', 120),
-    ':language_code' => clean_string($data, 'languageCode', 20) ?: 'en-US',
+    ':language_code' => clean_string($data, 'languageCode', 20) ?: 'en-CA',
     ':voice_provider' => clean_string($data, 'voiceProvider', 80) ?: 'elevenlabs',
     ':voice_id' => clean_string($data, 'voiceId', 120),
-    ':voice_model' => clean_string($data, 'voiceModel', 120) ?: 'eleven_flash_v2',
+    ':voice_model' => clean_string($data, 'voiceModel', 120) ?: 'eleven_flash_v2_5',
     ':twilio_phone' => clean_string($data, 'twilioPhone', 40),
     ':n8n_webhook_url' => clean_string($data, 'n8nWebhookUrl', 255),
     ':escalation_phone' => clean_string($data, 'escalationPhone', 40),
@@ -71,7 +71,7 @@ $workflowFields = [
     ':order_sheet_name' => clean_string($data, 'orderSheetName', 120) ?: 'Sheet1',
     ':reservation_sheet_name' => clean_string($data, 'reservationSheetName', 120) ?: 'Sheet1',
     ':cloudinary_folder' => clean_string($data, 'cloudinaryFolder', 160) ?: 'xorvian-audio',
-    ':twilio_language' => clean_string($data, 'twilioLanguage', 20) ?: 'en-US',
+    ':twilio_language' => clean_string($data, 'twilioLanguage', 20) ?: 'en-CA',
     ':output_format' => clean_string($data, 'outputFormat', 80) ?: 'mp3_44100_128',
 ];
 

@@ -1,3 +1,4 @@
 backend/api/config.private.php
 *.zip
 .preview/
+node_modules/

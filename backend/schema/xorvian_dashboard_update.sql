@@ -18,7 +18,7 @@ CREATE TABLE IF NOT EXISTS workflow_settings (
   order_sheet_name VARCHAR(120) NOT NULL DEFAULT 'Sheet1',
   reservation_sheet_name VARCHAR(120) NOT NULL DEFAULT 'Sheet1',
   cloudinary_folder VARCHAR(160) NOT NULL DEFAULT 'xorvian-audio',
-  twilio_language VARCHAR(20) NOT NULL DEFAULT 'en-US',
+  twilio_language VARCHAR(20) NOT NULL DEFAULT 'en-CA',
   output_format VARCHAR(80) NOT NULL DEFAULT 'mp3_44100_128',
   order_fields_json JSON NULL,
   reservation_fields_json JSON NULL,

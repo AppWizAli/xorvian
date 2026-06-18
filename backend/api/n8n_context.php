@@ -61,6 +61,12 @@ $userId = (int)$row['user_id'];
 $menu = format_menu_for_user($userId);
 $callSid = clean_string($data, 'callSid', 120);
 $fromPhone = clean_string($data, 'from', 40);
+$country = trim((string)($row['country'] ?? '')) ?: 'Canada';
+$isCanada = strcasecmp($country, 'Canada') === 0 || strcasecmp($country, 'CA') === 0;
+$timezone = $row['timezone'] ?: ($isCanada ? 'America/Toronto' : 'Asia/Karachi');
+$languageCode = $row['language_code'] ?: ($isCanada ? 'en-CA' : 'en-US');
+$twilioLanguage = $row['twilio_language'] ?: $languageCode;
+$currency = $isCanada ? 'CAD' : 'PKR';
 
 if ($callSid !== '' || $fromPhone !== '') {
     $existingCallId = null;
@@ -110,13 +116,14 @@ json_response([
         'name' => $row['restaurant_name'] ?: 'Restaurant',
         'tagline' => 'AI powered restaurant service',
         'address' => $row['address'] ?: '',
+        'country' => $country,
         'phones' => array_values(array_filter([$row['business_phone'] ?: '', $row['twilio_phone'] ?: ''])),
         'mobile' => array_values(array_filter([$row['business_phone'] ?: ''])),
         'hours' => $row['opening_hours'] ?: '',
-        'timezone' => $row['timezone'] ?: 'Asia/Karachi',
-        'languages' => [$row['language_code'] ?: 'en-US'],
+        'timezone' => $timezone,
+        'languages' => [$languageCode],
         'voice' => $row['voice_provider'] ?: 'elevenlabs',
-        'currency' => 'PKR',
+        'currency' => $currency,
         'delivery' => trim((string)$row['delivery_zones']) !== '',
         'deliveryAreas' => array_values(array_filter(array_map('trim', explode(',', (string)$row['delivery_zones'])))),
         'pickup' => true,
@@ -142,9 +149,9 @@ json_response([
         'openaiMaxTokens' => (int)($row['openai_max_tokens'] ?? 300),
         'voiceProvider' => $row['voice_provider'] ?: 'elevenlabs',
         'voiceId' => $row['voice_id'] ?: 'ugPTAEnkrnbtfSNMzaSY',
-        'voiceModel' => $row['voice_model'] ?: 'eleven_flash_v2',
+        'voiceModel' => $row['voice_model'] ?: 'eleven_flash_v2_5',
         'outputFormat' => $row['output_format'] ?: 'mp3_44100_128',
-        'twilioLanguage' => $row['twilio_language'] ?: 'en-US',
+        'twilioLanguage' => $twilioLanguage,
         'systemPrompt' => $row['system_prompt'] ?: '',
     ],
 ]);
