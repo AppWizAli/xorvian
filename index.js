@@ -362,8 +362,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const menuMessage = document.getElementById('menu-message');
     const logoutBtn = document.getElementById('logout-btn');
     const workflowShortcutForm = document.getElementById('workflow-shortcut-form');
+    const profileSummaryGrid = document.getElementById('profile-summary-grid');
+    const assistantSummaryGrid = document.getElementById('assistant-summary-grid');
+    const menuSummaryGrid = document.getElementById('menu-summary-grid');
+    const workflowSummaryGrid = document.getElementById('workflow-summary-grid');
+    const editSectionButtons = document.querySelectorAll('[data-edit-section]');
+    const cancelEditButtons = document.querySelectorAll('[data-cancel-edit]');
     const ordersTableBody = document.getElementById('orders-table-body');
-    const customersTableBody = document.getElementById('customers-table-body');
+    const customersList = document.getElementById('customers-list');
+    const customerDetailPanel = document.getElementById('customer-detail-panel');
     const reservationsTableBody = document.getElementById('reservations-table-body');
     const callsTableBody = document.getElementById('calls-table-body');
     const handoffsTableBody = document.getElementById('handoffs-table-body');
@@ -371,6 +378,8 @@ document.addEventListener('DOMContentLoaded', () => {
     const apiEnvironment = document.getElementById('api-environment');
     const ORDER_STATUSES = ['new', 'confirmed', 'preparing', 'ready', 'out_for_delivery', 'completed', 'cancelled'];
     const RESERVATION_STATUSES = ['requested', 'confirmed', 'modified', 'cancelled', 'completed'];
+    let activeCustomerPhone = '';
+    let latestCustomers = [];
 
     if (apiEnvironment) {
       const isLiveApi = API_BASE.includes('aliportfolio.org');
@@ -410,28 +419,138 @@ document.addEventListener('DOMContentLoaded', () => {
       dashboardMessage.className = `auth-message ${type}`.trim();
     }
 
+    function openEditableSection(formId) {
+      const form = document.getElementById(formId);
+      if (!form) return;
+      form.classList.remove('is-hidden');
+      form.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+
+    function closeEditableSection(formId) {
+      const form = document.getElementById(formId);
+      if (!form) return;
+      form.classList.add('is-hidden');
+    }
+
+    editSectionButtons.forEach(button => {
+      button.addEventListener('click', () => {
+        openEditableSection(button.getAttribute('data-edit-section'));
+      });
+    });
+
+    cancelEditButtons.forEach(button => {
+      button.addEventListener('click', () => {
+        closeEditableSection(button.getAttribute('data-cancel-edit'));
+      });
+    });
+
+    function formValue(form, fieldName, fallback = 'Not set') {
+      const value = form?.elements?.[fieldName]?.value;
+      const text = String(value || '').trim();
+      return text || fallback;
+    }
+
+    function checkedText(form, fieldName) {
+      return form?.elements?.[fieldName]?.checked ? 'Enabled' : 'Disabled';
+    }
+
+    function renderSummaryGrid(container, items) {
+      if (!container) return;
+      container.innerHTML = items.map(item => `
+        <div class="config-summary-item ${item.wide ? 'wide' : ''}">
+          <span>${escapeHtml(item.label)}</span>
+          <strong>${escapeHtml(item.value || 'Not set')}</strong>
+        </div>
+      `).join('');
+    }
+
+    function renderProfileSummary() {
+      renderSummaryGrid(profileSummaryGrid, [
+        { label: 'Restaurant', value: formValue(profileForm, 'restaurantName') },
+        { label: 'Business Phone', value: formValue(profileForm, 'businessPhone') },
+        { label: 'Cuisine', value: formValue(profileForm, 'cuisineType') },
+        { label: 'Timezone', value: formValue(profileForm, 'timezone') },
+        { label: 'Address', value: [formValue(profileForm, 'address', ''), formValue(profileForm, 'city', ''), formValue(profileForm, 'country', '')].filter(Boolean).join(', ') || 'Not set', wide: true },
+        { label: 'Opening Hours', value: formValue(profileForm, 'openingHours'), wide: true },
+        { label: 'Delivery Zones', value: formValue(profileForm, 'deliveryZones'), wide: true },
+        { label: 'Reservation Policy', value: formValue(profileForm, 'reservationPolicy'), wide: true }
+      ]);
+    }
+
+    function renderAssistantSummary() {
+      renderSummaryGrid(assistantSummaryGrid, [
+        { label: 'Agent Name', value: formValue(agentSettingsForm, 'agentName') },
+        { label: 'Language', value: formValue(agentSettingsForm, 'languageCode') },
+        { label: 'OpenAI Model', value: formValue(agentSettingsForm, 'openaiModel') },
+        { label: 'Max Tokens', value: formValue(agentSettingsForm, 'openaiMaxTokens') },
+        { label: 'Voice ID', value: formValue(agentSettingsForm, 'voiceId') },
+        { label: 'Voice Model', value: formValue(agentSettingsForm, 'voiceModel') },
+        { label: 'Orders', value: checkedText(agentSettingsForm, 'orderEnabled') },
+        { label: 'Reservations', value: checkedText(agentSettingsForm, 'reservationEnabled') },
+        { label: 'Manager Notifications', value: `${checkedText(agentSettingsForm, 'notificationEnabled')} / ${formValue(agentSettingsForm, 'notificationChannel')}` },
+        { label: 'Escalation Phone', value: formValue(agentSettingsForm, 'escalationPhone') },
+        { label: 'Notification Target', value: formValue(agentSettingsForm, 'notificationPhone', formValue(agentSettingsForm, 'notificationEmail')) },
+        { label: 'Handoff Urgency', value: formValue(agentSettingsForm, 'notificationMinUrgency') },
+        { label: 'Prompt Notes', value: formValue(agentSettingsForm, 'systemPrompt'), wide: true }
+      ]);
+    }
+
+    function renderWorkflowSummary() {
+      renderSummaryGrid(workflowSummaryGrid, [
+        { label: 'Twilio Phone', value: formValue(agentSettingsForm, 'twilioPhone') },
+        { label: 'Gateway Webhook Path', value: formValue(agentSettingsForm, 'n8nWebhookPath') },
+        { label: 'Optional n8n URL', value: formValue(agentSettingsForm, 'n8nWebhookUrl') },
+        { label: 'Order Sheet ID', value: formValue(agentSettingsForm, 'orderSheetId') },
+        { label: 'Reservation Sheet ID', value: formValue(agentSettingsForm, 'reservationSheetId') }
+      ]);
+    }
+
+    function renderMenuSummary() {
+      if (!menuSummaryGrid || !menuForm) return;
+      let categories = [];
+      try {
+        categories = JSON.parse(menuForm.elements.menuJson.value || '[]');
+      } catch (error) {
+        categories = [];
+      }
+
+      const itemCount = categories.reduce((total, category) => total + (Array.isArray(category.items) ? category.items.length : 0), 0);
+      const categoryNames = categories.map(category => category.name).filter(Boolean).slice(0, 6).join(', ');
+      renderSummaryGrid(menuSummaryGrid, [
+        { label: 'Categories', value: String(categories.length || 0) },
+        { label: 'Menu Items', value: String(itemCount || 0) },
+        { label: 'Category Names', value: categoryNames || 'Not set', wide: true },
+        { label: 'Menu Notes', value: formValue(menuForm, 'menuNotes'), wide: true },
+        { label: 'Knowledge Base', value: formValue(menuForm, 'knowledgeBase'), wide: true }
+      ]);
+    }
+
     function fillProfile(profile) {
-      if (!profileForm || !profile) return;
+      if (!profileForm) return;
+      const source = profile || {};
 
       const map = {
-        restaurantName: profile.restaurant_name,
-        businessPhone: profile.business_phone,
-        address: profile.address,
-        city: profile.city,
-        country: profile.country,
-        cuisineType: profile.cuisine_type,
-        timezone: profile.timezone,
-        openingHours: profile.opening_hours,
-        deliveryZones: profile.delivery_zones,
-        reservationPolicy: profile.reservation_policy,
-        menuNotes: profile.menu_notes,
-        knowledgeBase: profile.knowledge_base
+        restaurantName: source.restaurant_name,
+        businessPhone: source.business_phone,
+        address: source.address,
+        city: source.city,
+        country: source.country,
+        cuisineType: source.cuisine_type,
+        timezone: source.timezone,
+        openingHours: source.opening_hours,
+        deliveryZones: source.delivery_zones,
+        reservationPolicy: source.reservation_policy,
+        menuNotes: source.menu_notes,
+        knowledgeBase: source.knowledge_base
       };
 
       Object.entries(map).forEach(([fieldName, value]) => {
         const field = profileForm.elements[fieldName] || document.querySelector(`[name="${fieldName}"]`);
         if (field) field.value = value || '';
       });
+
+      renderProfileSummary();
+      renderMenuSummary();
     }
 
     function fillAgentSettings(agent, workflow) {
@@ -475,6 +594,9 @@ document.addEventListener('DOMContentLoaded', () => {
       if (agentSettingsForm.elements.notificationEnabled) {
         agentSettingsForm.elements.notificationEnabled.checked = String(agent?.notification_enabled ?? '1') === '1';
       }
+
+      renderAssistantSummary();
+      renderWorkflowSummary();
     }
 
     function setTableMessage(tableBody, colspan, message, type = '') {
@@ -571,41 +693,76 @@ document.addEventListener('DOMContentLoaded', () => {
       `;
     }
 
-    function renderCustomerDetails(customer) {
-      return `
-        <details class="customer-detail-drawer">
-          <summary>View full history</summary>
-          <div class="customer-history-grid">
-            ${renderHistoryList('Orders', customer.orders, order => `
-              <div>
-                <span>${renderStatus(order.order_status || 'new')} ${escapeHtml(formatDateTime(order.created_at))}</span>
-                <small>${escapeHtml(compactText(order.order_items))}</small>
-                <small>${escapeHtml(order.special_notes || '')}</small>
-              </div>
-            `)}
-            ${renderHistoryList('Reservations', customer.reservations, reservation => `
-              <div>
-                <span>${renderStatus(reservation.status || 'requested')} ${escapeHtml(reservation.reservation_date || '-')} ${escapeHtml(reservation.reservation_time || '')}</span>
-                <small>${escapeHtml(reservation.party_size || '-')} guests</small>
-                <small>${escapeHtml(reservation.notes || '')}</small>
-              </div>
-            `)}
-            ${renderHistoryList('Calls', customer.calls, call => `
-              <div>
-                <span>${renderStatus(call.call_status || 'answered')} ${escapeHtml(formatDateTime(call.created_at))}</span>
-                <small>${escapeHtml(prettyStatus(call.call_type || 'unknown'))} / ${escapeHtml(formatDuration(call.duration_seconds))}</small>
-                <small>${escapeHtml(call.ai_summary || call.call_sid || '')}</small>
-              </div>
-            `)}
-            ${renderHistoryList('Handoffs', customer.handoffs, handoff => `
-              <div>
-                <span>${renderStatus(handoff.urgency || 'normal')} ${renderStatus(handoff.status || 'new')}</span>
-                <small>${escapeHtml(handoff.reason || handoff.conversation_summary || 'Manager callback')}</small>
-                <small>${escapeHtml(handoff.best_callback_time || '')}</small>
-              </div>
-            `)}
+    function renderCustomerDetailPanel(customer) {
+      if (!customerDetailPanel) return;
+
+      if (!customer) {
+        customerDetailPanel.innerHTML = '<div class="config-empty">Select a customer to view history.</div>';
+        return;
+      }
+
+      const latestOrder = customer.latestOrder;
+      const latestReservation = customer.latestReservation;
+      const latestHandoff = customer.latestHandoff;
+
+      customerDetailPanel.innerHTML = `
+        <div class="customer-detail-head">
+          <div>
+            <span>Customer Profile</span>
+            <h3>${escapeHtml(customer.name || 'Guest')}</h3>
+            <p>${escapeHtml(customer.phone || 'No phone captured')}</p>
           </div>
-        </details>
+          <div class="customer-detail-stats">
+            ${renderMetricPills(customer)}
+          </div>
+        </div>
+        <div class="customer-latest-grid">
+          <div>
+            <span>Latest Order</span>
+            <strong>${latestOrder ? escapeHtml(compactText(latestOrder.order_items)) : 'No orders yet'}</strong>
+            ${latestOrder ? renderStatus(latestOrder.order_status || 'new') : ''}
+          </div>
+          <div>
+            <span>Latest Reservation</span>
+            <strong>${latestReservation ? `${escapeHtml(latestReservation.reservation_date || '-')} ${escapeHtml(latestReservation.reservation_time || '')}` : 'No reservations yet'}</strong>
+            ${latestReservation ? renderStatus(latestReservation.status || 'requested') : ''}
+          </div>
+          <div>
+            <span>Manager Follow-up</span>
+            <strong>${latestHandoff ? escapeHtml(latestHandoff.reason || latestHandoff.conversation_summary || 'Callback requested') : 'No handoffs'}</strong>
+            ${latestHandoff ? `${renderStatus(latestHandoff.urgency || 'normal')} ${renderStatus(latestHandoff.status || 'new')}` : ''}
+          </div>
+        </div>
+        <div class="customer-history-grid">
+          ${renderHistoryList('Orders', customer.orders, order => `
+            <div>
+              <span>${renderStatus(order.order_status || 'new')} ${escapeHtml(formatDateTime(order.created_at))}</span>
+              <small>${escapeHtml(compactText(order.order_items))}</small>
+              <small>${escapeHtml(order.special_notes || '')}</small>
+            </div>
+          `)}
+          ${renderHistoryList('Reservations', customer.reservations, reservation => `
+            <div>
+              <span>${renderStatus(reservation.status || 'requested')} ${escapeHtml(reservation.reservation_date || '-')} ${escapeHtml(reservation.reservation_time || '')}</span>
+              <small>${escapeHtml(reservation.party_size || '-')} guests</small>
+              <small>${escapeHtml(reservation.notes || '')}</small>
+            </div>
+          `)}
+          ${renderHistoryList('Calls', customer.calls, call => `
+            <div>
+              <span>${renderStatus(call.call_status || 'answered')} ${escapeHtml(formatDateTime(call.created_at))}</span>
+              <small>${escapeHtml(prettyStatus(call.call_type || 'unknown'))} / ${escapeHtml(formatDuration(call.duration_seconds))}</small>
+              <small>${escapeHtml(call.ai_summary || call.call_sid || '')}</small>
+            </div>
+          `)}
+          ${renderHistoryList('Handoffs', customer.handoffs, handoff => `
+            <div>
+              <span>${renderStatus(handoff.urgency || 'normal')} ${renderStatus(handoff.status || 'new')}</span>
+              <small>${escapeHtml(handoff.reason || handoff.conversation_summary || 'Manager callback')}</small>
+              <small>${escapeHtml(handoff.best_callback_time || '')}</small>
+            </div>
+          `)}
+        </div>
       `;
     }
 
@@ -647,68 +804,56 @@ document.addEventListener('DOMContentLoaded', () => {
 
       ordersTableBody.innerHTML = orders.map(order => `
         <tr>
-          <td>
+          <td data-label="Name">
             <strong>${escapeHtml(order.customer_name || 'Guest')}</strong>
             <small>${escapeHtml(order.source || 'voice_ai')}</small>
           </td>
-          <td>${escapeHtml(order.customer_phone || '-')}</td>
-          <td class="table-main-cell">${escapeHtml(order.order_items || '-')}</td>
-          <td>
+          <td data-label="Phone">${escapeHtml(order.customer_phone || '-')}</td>
+          <td data-label="Order" class="table-main-cell">${escapeHtml(order.order_items || '-')}</td>
+          <td data-label="Details">
             <small>Total: ${escapeHtml(renderMoney(order.order_total))}</small>
             <small>${escapeHtml(order.special_notes || 'No notes')}</small>
           </td>
-          <td>${renderStatus(order.order_status)}</td>
-          <td>${escapeHtml(formatDateTime(order.created_at))}</td>
-          <td>${renderStatusSelect('order', order.id, order.order_status || 'new')}</td>
+          <td data-label="Status">${renderStatus(order.order_status)}</td>
+          <td data-label="Time">${escapeHtml(formatDateTime(order.created_at))}</td>
+          <td data-label="Action">${renderStatusSelect('order', order.id, order.order_status || 'new')}</td>
         </tr>
       `).join('');
     }
 
     function renderCustomers(customers) {
-      if (!customersTableBody) return;
+      if (!customersList) return;
 
       if (!customers.length) {
-        setTableMessage(customersTableBody, 6, 'No customer history yet.');
+        customersList.innerHTML = '<div class="config-empty">No customer history yet.</div>';
+        renderCustomerDetailPanel(null);
         return;
       }
 
-      customersTableBody.innerHTML = customers.map(customer => {
+      latestCustomers = customers;
+      const activeIndex = Math.max(customers.findIndex(customer => (customer.phone || customer.name || '') === activeCustomerPhone), 0);
+      activeCustomerPhone = customers[activeIndex]?.phone || customers[activeIndex]?.name || '';
+
+      customersList.innerHTML = customers.map((customer, index) => {
         const latestOrder = customer.latestOrder;
         const latestReservation = customer.latestReservation;
         const latestHandoff = customer.latestHandoff;
+        const isActive = index === activeIndex;
 
         return `
-          <tr>
-            <td>
+          <button class="customer-list-item ${isActive ? 'active' : ''}" type="button" data-customer-index="${index}">
+            <span>
               <strong>${escapeHtml(customer.name || 'Guest')}</strong>
               <small>${escapeHtml(customer.phone || 'No phone captured')}</small>
-              ${renderCustomerDetails(customer)}
-            </td>
-            <td>${renderMetricPills(customer)}</td>
-            <td class="table-main-cell">
-              ${latestOrder ? `
-                ${renderStatus(latestOrder.order_status || 'new')}
-                <small>${escapeHtml(compactText(latestOrder.order_items))}</small>
-              ` : '<small>No orders yet.</small>'}
-            </td>
-            <td class="table-main-cell">
-              ${latestReservation ? `
-                ${renderStatus(latestReservation.status || 'requested')}
-                <small>${escapeHtml(latestReservation.reservation_date || '-')} ${escapeHtml(latestReservation.reservation_time || '')}</small>
-                <small>${escapeHtml(latestReservation.party_size || '-')} guests</small>
-              ` : '<small>No reservations yet.</small>'}
-            </td>
-            <td class="table-main-cell">
-              ${latestHandoff ? `
-                ${renderStatus(latestHandoff.urgency || 'normal')}
-                ${renderStatus(latestHandoff.status || 'new')}
-                <small>${escapeHtml(latestHandoff.reason || latestHandoff.conversation_summary || 'Manager callback')}</small>
-              ` : '<small>No handoffs.</small>'}
-            </td>
-            <td>${escapeHtml(formatDateTime(customer.lastActivity))}</td>
-          </tr>
+            </span>
+            ${renderMetricPills(customer)}
+            <small>${escapeHtml(formatDateTime(customer.lastActivity))}</small>
+            <small>${escapeHtml(latestOrder ? compactText(latestOrder.order_items) : latestReservation ? `${latestReservation.reservation_date || '-'} ${latestReservation.reservation_time || ''}` : latestHandoff ? latestHandoff.reason || 'Manager handoff' : 'No recent action')}</small>
+          </button>
         `;
       }).join('');
+
+      renderCustomerDetailPanel(customers[activeIndex]);
     }
 
     function renderReservations(reservations) {
@@ -721,17 +866,17 @@ document.addEventListener('DOMContentLoaded', () => {
 
       reservationsTableBody.innerHTML = reservations.map(reservation => `
         <tr>
-          <td>
+          <td data-label="Guest">
             <strong>${escapeHtml(reservation.guest_name || 'Guest')}</strong>
             <small>${escapeHtml(reservation.source || 'voice_ai')}</small>
           </td>
-          <td>${escapeHtml(reservation.guest_phone || '-')}</td>
-          <td>${escapeHtml(reservation.reservation_date || '-')}</td>
-          <td>${escapeHtml(reservation.reservation_time || '-')}</td>
-          <td>${escapeHtml(reservation.party_size || '-')}</td>
-          <td class="table-main-cell">${escapeHtml(reservation.notes || 'No notes')}</td>
-          <td>${renderStatus(reservation.status)}</td>
-          <td>${renderStatusSelect('reservation', reservation.id, reservation.status || 'requested')}</td>
+          <td data-label="Phone">${escapeHtml(reservation.guest_phone || '-')}</td>
+          <td data-label="Date">${escapeHtml(reservation.reservation_date || '-')}</td>
+          <td data-label="Time">${escapeHtml(reservation.reservation_time || '-')}</td>
+          <td data-label="Guests">${escapeHtml(reservation.party_size || '-')}</td>
+          <td data-label="Notes" class="table-main-cell">${escapeHtml(reservation.notes || 'No notes')}</td>
+          <td data-label="Status">${renderStatus(reservation.status)}</td>
+          <td data-label="Action">${renderStatusSelect('reservation', reservation.id, reservation.status || 'requested')}</td>
         </tr>
       `).join('');
     }
@@ -746,11 +891,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
       callsTableBody.innerHTML = calls.map(call => `
         <tr>
-          <td>${escapeHtml(call.caller_phone || '-')}</td>
-          <td>${escapeHtml(prettyStatus(call.call_type || 'unknown'))}</td>
-          <td>${renderStatus(call.call_status)}</td>
-          <td>${escapeHtml(formatDuration(call.duration_seconds))}</td>
-          <td class="table-main-cell">${escapeHtml(call.ai_summary || call.call_sid || '-')}</td>
+          <td data-label="Caller">${escapeHtml(call.caller_phone || '-')}</td>
+          <td data-label="Type">${escapeHtml(prettyStatus(call.call_type || 'unknown'))}</td>
+          <td data-label="Status">${renderStatus(call.call_status)}</td>
+          <td data-label="Duration">${escapeHtml(formatDuration(call.duration_seconds))}</td>
+          <td data-label="Summary" class="table-main-cell">${escapeHtml(call.ai_summary || call.call_sid || '-')}</td>
         </tr>
       `).join('');
     }
@@ -782,15 +927,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
         return `
           <tr>
-            <td>
+            <td data-label="Customer">
               <strong>${escapeHtml(handoff.customer_name || 'Customer')}</strong>
               <small>${escapeHtml(handoff.customer_phone || '-')}</small>
             </td>
-            <td>${renderStatus(handoff.urgency || 'normal')}</td>
-            <td class="table-main-cell">${escapeHtml(handoffSummary(handoff) || '-')}</td>
-            <td>${escapeHtml(notification)}</td>
-            <td>${renderStatus(handoff.status || 'new')}</td>
-            <td>
+            <td data-label="Urgency">${renderStatus(handoff.urgency || 'normal')}</td>
+            <td data-label="Reason" class="table-main-cell">${escapeHtml(handoffSummary(handoff) || '-')}</td>
+            <td data-label="Notification">${escapeHtml(notification)}</td>
+            <td data-label="Status">${renderStatus(handoff.status || 'new')}</td>
+            <td data-label="Action">
               <button class="compact-button ghost handoff-action" type="button" data-handoff-id="${escapeHtml(handoff.id)}" data-next-status="contacted" ${disabled}>Contacted</button>
               <button class="compact-button ghost handoff-action" type="button" data-handoff-id="${escapeHtml(handoff.id)}" data-next-status="resolved" ${disabled}>Resolved</button>
             </td>
@@ -895,7 +1040,8 @@ document.addEventListener('DOMContentLoaded', () => {
     async function loadOperationalTables() {
       try {
         setTableMessage(ordersTableBody, 7, 'Loading orders...');
-        setTableMessage(customersTableBody, 6, 'Loading customers...');
+        if (customersList) customersList.innerHTML = '<div class="config-empty">Loading customers...</div>';
+        renderCustomerDetailPanel(null);
         setTableMessage(reservationsTableBody, 8, 'Loading reservations...');
         setTableMessage(callsTableBody, 5, 'Loading call logs...');
         setTableMessage(handoffsTableBody, 6, 'Loading handoff requests...');
@@ -917,7 +1063,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (customersResult.status === 'fulfilled') {
           renderCustomers(customersResult.value.customers || []);
         } else {
-          setTableMessage(customersTableBody, 6, customersResult.reason.message || 'Could not load customers.', 'error');
+          if (customersList) customersList.innerHTML = `<div class="config-empty error">${escapeHtml(customersResult.reason.message || 'Could not load customers.')}</div>`;
+          renderCustomerDetailPanel(null);
         }
 
         if (reservationsResult.status === 'fulfilled') {
@@ -948,7 +1095,8 @@ document.addEventListener('DOMContentLoaded', () => {
       } catch (error) {
         const message = error.message || 'Could not load operational data.';
         setTableMessage(ordersTableBody, 7, message, 'error');
-        setTableMessage(customersTableBody, 6, message, 'error');
+        if (customersList) customersList.innerHTML = `<div class="config-empty error">${escapeHtml(message)}</div>`;
+        renderCustomerDetailPanel(null);
         setTableMessage(reservationsTableBody, 8, message, 'error');
         setTableMessage(callsTableBody, 5, message, 'error');
         setTableMessage(handoffsTableBody, 6, message, 'error');
@@ -1020,9 +1168,11 @@ document.addEventListener('DOMContentLoaded', () => {
               return `${category.name}\n${items}`;
             }).join('\n\n');
           }
+          renderMenuSummary();
         } else if (menuMessage) {
           menuMessage.textContent = 'No menu saved yet. Add menu items and save them here.';
           menuMessage.className = 'auth-message';
+          renderMenuSummary();
         }
       } catch (error) {
         if (menuMessage) {
@@ -1148,6 +1298,7 @@ Fries
           }
 
           menuForm.elements.menuJson.value = JSON.stringify(categories, null, 2);
+          renderMenuSummary();
           setMenuConverterStatus(`Converted ${categories.length} categories to gateway menu JSON.`, 'success');
         } catch (error) {
           setMenuConverterStatus(error.message, 'error');
@@ -1193,6 +1344,10 @@ Fries
             workflowSettingsMessage.textContent = 'Gateway settings saved.';
             workflowSettingsMessage.className = 'auth-message success';
           }
+          renderAssistantSummary();
+          renderWorkflowSummary();
+          closeEditableSection('agent-settings-form');
+          closeEditableSection('workflow-shortcut-form');
           loadDashboard();
         } catch (error) {
           if (agentSettingsMessage) {
@@ -1241,6 +1396,8 @@ Fries
             menuMessage.textContent = 'Menu saved.';
             menuMessage.className = 'auth-message success';
           }
+          renderMenuSummary();
+          closeEditableSection('menu-form');
         } catch (error) {
           if (menuMessage) {
             menuMessage.textContent = error.message;
@@ -1316,6 +1473,21 @@ Fries
       });
     }
 
+    if (customersList) {
+      customersList.addEventListener('click', (event) => {
+        const item = event.target.closest('.customer-list-item');
+        if (!item) return;
+        const index = Number(item.getAttribute('data-customer-index'));
+        const customer = latestCustomers[index];
+        if (!customer) return;
+
+        activeCustomerPhone = customer.phone || customer.name || '';
+        customersList.querySelectorAll('.customer-list-item').forEach(button => button.classList.remove('active'));
+        item.classList.add('active');
+        renderCustomerDetailPanel(customer);
+      });
+    }
+
     if (handoffsTableBody) {
       handoffsTableBody.addEventListener('click', async (event) => {
         const button = event.target.closest('.handoff-action');
@@ -1353,6 +1525,9 @@ Fries
             body: JSON.stringify(payload)
           });
           fillProfile(response.profile);
+          renderProfileSummary();
+          renderMenuSummary();
+          closeEditableSection('restaurant-profile-form');
           showDashboardMessage('Restaurant profile saved.', 'success');
         } catch (error) {
           showDashboardMessage(error.message, 'error');

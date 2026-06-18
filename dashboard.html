@@ -151,9 +151,16 @@
             <h2>Restaurant Profile</h2>
             <p>These details help the AI answer customer questions accurately.</p>
           </div>
+          <button class="compact-button" type="button" data-edit-section="restaurant-profile-form">Edit Profile</button>
         </div>
 
-        <form id="restaurant-profile-form" class="customer-form">
+        <article class="config-read-panel" id="profile-summary-panel">
+          <div class="config-read-grid" id="profile-summary-grid">
+            <div class="config-empty">Loading restaurant profile...</div>
+          </div>
+        </article>
+
+        <form id="restaurant-profile-form" class="customer-form editable-section is-hidden">
           <div class="form-row">
             <div class="form-group">
               <label class="form-label" for="restaurant-name">Restaurant Name</label>
@@ -208,7 +215,10 @@
             <textarea class="form-input" id="reservation-policy" name="reservationPolicy" rows="3" placeholder="Party size rules, cancellation policy, table timing"></textarea>
           </div>
 
-          <button class="compact-button primary-wide" type="submit">Save Restaurant Profile</button>
+          <div class="form-action-row">
+            <button class="compact-button primary-wide" type="submit">Save Restaurant Profile</button>
+            <button class="compact-button ghost" type="button" data-cancel-edit="restaurant-profile-form">Cancel</button>
+          </div>
           <p class="auth-message" id="dashboard-message" aria-live="polite"></p>
         </form>
       </section>
@@ -219,9 +229,16 @@
             <h2>AI Assistant</h2>
             <p>Configure voice, model, Twilio, OpenAI, and response behavior.</p>
           </div>
+          <button class="compact-button" type="button" data-edit-section="agent-settings-form">Edit Assistant</button>
         </div>
 
-        <form id="agent-settings-form" class="customer-form">
+        <article class="config-read-panel" id="assistant-summary-panel">
+          <div class="config-read-grid" id="assistant-summary-grid">
+            <div class="config-empty">Loading assistant settings...</div>
+          </div>
+        </article>
+
+        <form id="agent-settings-form" class="customer-form editable-section is-hidden">
           <div class="form-row">
             <div class="form-group">
               <label class="form-label" for="agent-name">Agent Name</label>
@@ -328,7 +345,10 @@
             <textarea class="form-input" id="system-prompt" name="systemPrompt" rows="4" placeholder="Brand tone, upsell instructions, handoff rules"></textarea>
           </div>
 
-          <button class="compact-button primary-wide" type="submit">Save Agent Settings</button>
+          <div class="form-action-row">
+            <button class="compact-button primary-wide" type="submit">Save Agent Settings</button>
+            <button class="compact-button ghost" type="button" data-cancel-edit="agent-settings-form">Cancel</button>
+          </div>
           <p class="auth-message" id="agent-settings-message" aria-live="polite"></p>
         </form>
       </section>
@@ -339,9 +359,16 @@
             <h2>Menu & Knowledge</h2>
             <p>Add customer-facing menu data and knowledge your AI should know.</p>
           </div>
+          <button class="compact-button" type="button" data-edit-section="menu-form">Edit Menu</button>
         </div>
 
-        <form id="menu-form" class="customer-form">
+        <article class="config-read-panel" id="menu-summary-panel">
+          <div class="config-read-grid" id="menu-summary-grid">
+            <div class="config-empty">Loading menu knowledge...</div>
+          </div>
+        </article>
+
+        <form id="menu-form" class="customer-form editable-section is-hidden">
           <div class="form-row">
             <div class="form-group">
               <label class="form-label" for="menu-notes">Menu Notes</label>
@@ -389,7 +416,10 @@ Burger
   }
 ]</textarea>
           </div>
-          <button class="compact-button primary-wide" type="submit">Save Menu</button>
+          <div class="form-action-row">
+            <button class="compact-button primary-wide" type="submit">Save Menu</button>
+            <button class="compact-button ghost" type="button" data-cancel-edit="menu-form">Cancel</button>
+          </div>
           <p class="auth-message" id="menu-message" aria-live="polite"></p>
         </form>
       </section>
@@ -418,11 +448,13 @@ Burger
           </div>
           <button class="compact-button" type="button" data-refresh-operational>Refresh</button>
         </div>
-        <div class="customer-table-card">
-          <table class="customer-table customer-crm-table">
-            <thead><tr><th>Customer</th><th>Activity</th><th>Latest Order</th><th>Latest Reservation</th><th>Manager Follow-up</th><th>Last Seen</th></tr></thead>
-            <tbody id="customers-table-body"><tr><td colspan="6">Loading customers...</td></tr></tbody>
-          </table>
+        <div class="customer-crm-shell">
+          <div class="customer-crm-list" id="customers-list">
+            <div class="config-empty">Loading customers...</div>
+          </div>
+          <article class="customer-crm-detail" id="customer-detail-panel">
+            <div class="config-empty">Select a customer to view history.</div>
+          </article>
         </div>
       </section>
 
@@ -480,8 +512,14 @@ Burger
             <h2>Voice Gateway Connection</h2>
             <p>Connect the customer's Twilio number to the realtime voice gateway. n8n is optional for background automations.</p>
           </div>
+          <button class="compact-button" type="button" data-edit-section="workflow-shortcut-form">Edit Gateway</button>
         </div>
-        <form class="customer-form" id="workflow-shortcut-form">
+        <article class="config-read-panel" id="workflow-summary-panel">
+          <div class="config-read-grid" id="workflow-summary-grid">
+            <div class="config-empty">Loading gateway settings...</div>
+          </div>
+        </article>
+        <form class="customer-form editable-section is-hidden" id="workflow-shortcut-form">
           <div class="form-row">
             <div class="form-group">
               <label class="form-label" for="n8n-webhook-path">Optional n8n Webhook Path</label>
@@ -502,7 +540,10 @@ Burger
               <input class="form-input" id="reservation-sheet-id" name="reservationSheetId" type="text" placeholder="Google Sheet ID" form="agent-settings-form">
             </div>
           </div>
-          <button class="compact-button primary-wide" type="submit">Save Gateway Settings</button>
+          <div class="form-action-row">
+            <button class="compact-button primary-wide" type="submit">Save Gateway Settings</button>
+            <button class="compact-button ghost" type="button" data-cancel-edit="workflow-shortcut-form">Cancel</button>
+          </div>
           <p class="auth-message" id="workflow-settings-message" aria-live="polite"></p>
         </form>
       </section>
