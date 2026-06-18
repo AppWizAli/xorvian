@@ -31,6 +31,9 @@
         <button class="customer-nav-item" type="button" data-dashboard-view="menu">
           <span>☷</span><strong>Menu & Knowledge</strong>
         </button>
+        <button class="customer-nav-item" type="button" data-dashboard-view="customers">
+          <span>C</span><strong>Customers</strong>
+        </button>
         <button class="customer-nav-item" type="button" data-dashboard-view="orders">
           <span>▣</span><strong>Orders</strong>
         </button>
@@ -395,14 +398,30 @@ Burger
         <div class="panel-head page-panel-head">
           <div>
             <h2>Orders</h2>
-            <p>AI phone orders saved from the voice gateway appear here automatically.</p>
+            <p>AI phone orders saved from the voice gateway appear here automatically. Update kitchen and delivery status from this table.</p>
           </div>
           <button class="compact-button" type="button" data-refresh-operational>Refresh</button>
         </div>
         <div class="customer-table-card">
           <table class="customer-table">
-            <thead><tr><th>Name</th><th>Phone</th><th>Order</th><th>Status</th><th>Time</th></tr></thead>
-            <tbody id="orders-table-body"><tr><td colspan="5">Loading orders...</td></tr></tbody>
+            <thead><tr><th>Name</th><th>Phone</th><th>Order</th><th>Details</th><th>Status</th><th>Time</th><th>Action</th></tr></thead>
+            <tbody id="orders-table-body"><tr><td colspan="7">Loading orders...</td></tr></tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="customer-view" id="view-customers" data-view-title="Customers">
+        <div class="panel-head page-panel-head">
+          <div>
+            <h2>Customers</h2>
+            <p>Repeat callers are grouped by phone number with their full order, reservation, call, and handoff history.</p>
+          </div>
+          <button class="compact-button" type="button" data-refresh-operational>Refresh</button>
+        </div>
+        <div class="customer-table-card">
+          <table class="customer-table customer-crm-table">
+            <thead><tr><th>Customer</th><th>Activity</th><th>Latest Order</th><th>Latest Reservation</th><th>Manager Follow-up</th><th>Last Seen</th></tr></thead>
+            <tbody id="customers-table-body"><tr><td colspan="6">Loading customers...</td></tr></tbody>
           </table>
         </div>
       </section>
@@ -411,14 +430,14 @@ Burger
         <div class="panel-head page-panel-head">
           <div>
             <h2>Reservations</h2>
-            <p>Guest booking requests and confirmed reservations will be listed here.</p>
+            <p>Guest booking requests and confirmed reservations will be listed here. Confirm, modify, or close requests from this table.</p>
           </div>
           <button class="compact-button" type="button" data-refresh-operational>Refresh</button>
         </div>
         <div class="customer-table-card">
           <table class="customer-table">
-            <thead><tr><th>Guest</th><th>Phone</th><th>Date</th><th>Time</th><th>Guests</th><th>Status</th></tr></thead>
-            <tbody id="reservations-table-body"><tr><td colspan="6">Loading reservations...</td></tr></tbody>
+            <thead><tr><th>Guest</th><th>Phone</th><th>Date</th><th>Time</th><th>Guests</th><th>Notes</th><th>Status</th><th>Action</th></tr></thead>
+            <tbody id="reservations-table-body"><tr><td colspan="8">Loading reservations...</td></tr></tbody>
           </table>
         </div>
       </section>

@@ -3,11 +3,66 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/bootstrap.php';
 
-require_method('GET');
-
 $user = current_user();
 $userId = (int)$user['id'];
 $isAdmin = ($user['role'] ?? '') === 'admin';
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $data = read_json_body();
+    $orderId = (int)($data['id'] ?? 0);
+    $status = clean_string($data, 'status', 40);
+    $customStatus = clean_string($data, 'customStatus', 500);
+
+    if ($orderId <= 0) {
+        json_response(['ok' => false, 'message' => 'Order id is required.'], 422);
+    }
+
+    if (!in_array($status, ['new', 'confirmed', 'preparing', 'ready', 'out_for_delivery', 'completed', 'cancelled'], true)) {
+        json_response(['ok' => false, 'message' => 'Invalid order status.'], 422);
+    }
+
+    $noteSql = '';
+    $params = [
+        ':status' => $status,
+        ':id' => $orderId,
+    ];
+
+    if ($customStatus !== '') {
+        $noteSql = ", special_notes = TRIM(CONCAT(COALESCE(special_notes, ''), CHAR(10), 'Manager update: ', :custom_status))";
+        $params[':custom_status'] = $customStatus;
+    }
+
+    $sql = 'UPDATE orders
+            SET order_status = :status' . $noteSql . '
+            WHERE id = :id';
+
+    if (!$isAdmin) {
+        $sql .= ' AND user_id = :user_id';
+        $params[':user_id'] = $userId;
+    }
+
+    $stmt = db()->prepare($sql);
+    $stmt->execute($params);
+
+    if ($stmt->rowCount() === 0) {
+        $checkSql = 'SELECT id FROM orders WHERE id = :id';
+        $checkParams = [':id' => $orderId];
+        if (!$isAdmin) {
+            $checkSql .= ' AND user_id = :user_id';
+            $checkParams[':user_id'] = $userId;
+        }
+
+        $checkStmt = db()->prepare($checkSql);
+        $checkStmt->execute($checkParams);
+        if (!$checkStmt->fetch()) {
+            json_response(['ok' => false, 'message' => 'Order not found.'], 404);
+        }
+    }
+
+    json_response(['ok' => true, 'message' => 'Order updated.']);
+}
+
+require_method('GET');
 
 $stmt = db()->prepare(
     'SELECT orders.id,
@@ -20,7 +75,8 @@ $stmt = db()->prepare(
             orders.order_items,
             orders.special_notes,
             orders.source,
-            orders.created_at
+            orders.created_at,
+            orders.updated_at
      FROM orders
      INNER JOIN users ON users.id = orders.user_id
      WHERE (:is_admin = 1 OR orders.user_id = :user_id)
