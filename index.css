@@ -2375,6 +2375,10 @@ footer {
   grid-template-columns: 1fr 1fr;
 }
 
+.overview-wide-panel {
+  margin-top: 12px;
+}
+
 .customer-panel {
   padding: 14px;
 }
@@ -2451,6 +2455,127 @@ footer {
 .setting-list strong {
   color: #111827;
   font-size: 12px;
+}
+
+.analytics-bars {
+  display: grid;
+  gap: 10px;
+}
+
+.analytics-row {
+  display: grid;
+  gap: 6px;
+}
+
+.analytics-row-head {
+  align-items: center;
+  color: #374151;
+  display: flex;
+  font-size: 12px;
+  font-weight: 700;
+  justify-content: space-between;
+}
+
+.analytics-track {
+  background: #f1f5f9;
+  border-radius: 999px;
+  height: 9px;
+  overflow: hidden;
+}
+
+.analytics-fill {
+  background: #7c3aed;
+  border-radius: inherit;
+  display: block;
+  height: 100%;
+  min-width: 4px;
+}
+
+.analytics-fill.orders {
+  background: #16a34a;
+}
+
+.analytics-fill.reservations {
+  background: #2563eb;
+}
+
+.analytics-fill.handoffs {
+  background: #f59e0b;
+}
+
+.analytics-fill.calls {
+  background: #7c3aed;
+}
+
+.activity-chart {
+  align-items: end;
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  min-height: 132px;
+}
+
+.activity-day {
+  align-items: center;
+  display: grid;
+  gap: 6px;
+  justify-items: center;
+}
+
+.activity-bar {
+  align-items: end;
+  background: #f1f5f9;
+  border-radius: 999px;
+  display: flex;
+  height: 90px;
+  overflow: hidden;
+  width: 16px;
+}
+
+.activity-bar span {
+  background: #7c3aed;
+  border-radius: inherit;
+  display: block;
+  min-height: 4px;
+  width: 100%;
+}
+
+.activity-day strong {
+  color: #111827;
+  font-size: 11px;
+}
+
+.activity-day small {
+  color: #9ca3af;
+  font-size: 10px;
+}
+
+.overview-action-list {
+  display: grid;
+  gap: 8px;
+}
+
+.overview-action-item {
+  align-items: start;
+  background: #fafbff;
+  border: 1px solid #edf0f6;
+  border-radius: 8px;
+  display: grid;
+  gap: 4px;
+  grid-template-columns: 130px 1fr auto;
+  padding: 10px;
+}
+
+.overview-action-item strong {
+  color: #111827;
+  font-size: 12px;
+}
+
+.overview-action-item span,
+.overview-action-item small,
+.analytics-empty {
+  color: #6b7280;
+  font-size: 11px;
 }
 
 .customer-form {

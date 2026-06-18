@@ -103,39 +103,43 @@
             <small>Booked or requested</small>
           </article>
           <article class="customer-stat-card">
-            <span>Voice Model</span>
-            <strong>Flash</strong>
-            <small>ElevenLabs low latency</small>
+            <span>Pending Handoffs</span>
+            <strong id="stat-handoffs">0</strong>
+            <small>Need manager attention</small>
           </article>
         </div>
 
         <div class="customer-grid-two">
           <article class="customer-panel">
             <div class="panel-head">
-              <h3>Onboarding Checklist</h3>
-              <span>4 steps</span>
+              <h3>Call Outcomes</h3>
+              <span id="overview-conversion-rate">0% action rate</span>
             </div>
-            <div class="compact-checklist">
-              <button type="button" data-dashboard-view="profile"><span>01</span> Save restaurant profile</button>
-              <button type="button" data-dashboard-view="menu"><span>02</span> Add menu and knowledge base</button>
-              <button type="button" data-dashboard-view="assistant"><span>03</span> Choose AI voice and behavior</button>
-              <button type="button" data-dashboard-view="workflow"><span>04</span> Connect phone gateway</button>
+            <div class="analytics-bars" id="overview-call-mix">
+              <div class="analytics-empty">Loading analytics...</div>
             </div>
           </article>
 
           <article class="customer-panel">
             <div class="panel-head">
-              <h3>Assistant Defaults</h3>
-              <span>Gateway ready</span>
+              <h3>7 Day Activity</h3>
+              <span id="overview-activity-total">0 events</span>
             </div>
-            <div class="setting-list">
-              <div><span>Language</span><strong>English / en-CA</strong></div>
-              <div><span>OpenAI</span><strong>gpt-realtime-2</strong></div>
-              <div><span>Voice</span><strong>eleven_flash_v2_5</strong></div>
-              <div><span>Audio</span><strong>ElevenLabs streaming</strong></div>
+            <div class="activity-chart" id="overview-activity-chart">
+              <div class="analytics-empty">Loading activity...</div>
             </div>
           </article>
         </div>
+
+        <article class="customer-panel overview-wide-panel">
+          <div class="panel-head">
+            <h3>Manager Attention</h3>
+            <span id="overview-manager-status">No pending issues</span>
+          </div>
+          <div class="overview-action-list" id="overview-action-list">
+            <div class="analytics-empty">Loading manager queue...</div>
+          </div>
+        </article>
       </section>
 
       <section class="customer-view" id="view-profile" data-view-title="Restaurant Profile">

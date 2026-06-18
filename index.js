@@ -333,7 +333,14 @@ document.addEventListener('DOMContentLoaded', () => {
     const statCalls = document.getElementById('stat-calls');
     const statOrders = document.getElementById('stat-dashboard-orders');
     const statReservations = document.getElementById('stat-reservations');
+    const statHandoffs = document.getElementById('stat-handoffs');
     const setupStatus = document.getElementById('setup-status');
+    const overviewCallMix = document.getElementById('overview-call-mix');
+    const overviewConversionRate = document.getElementById('overview-conversion-rate');
+    const overviewActivityChart = document.getElementById('overview-activity-chart');
+    const overviewActivityTotal = document.getElementById('overview-activity-total');
+    const overviewActionList = document.getElementById('overview-action-list');
+    const overviewManagerStatus = document.getElementById('overview-manager-status');
     const profileForm = document.getElementById('restaurant-profile-form');
     const agentSettingsForm = document.getElementById('agent-settings-form');
     const menuForm = document.getElementById('menu-form');
@@ -622,6 +629,98 @@ document.addEventListener('DOMContentLoaded', () => {
       }).join('');
     }
 
+    function percent(value, total) {
+      if (!total) return 0;
+      return Math.round((value / total) * 100);
+    }
+
+    function eventDate(value) {
+      const date = new Date(String(value || '').replace(' ', 'T'));
+      return Number.isNaN(date.getTime()) ? null : date;
+    }
+
+    function renderOverviewAnalytics({ orders = [], reservations = [], calls = [], handoffs = [] }) {
+      const pendingHandoffs = handoffs.filter(handoff => !['resolved', 'cancelled'].includes(String(handoff.status || '').toLowerCase()));
+      const callTotal = calls.length;
+      const actionTotal = orders.length + reservations.length + handoffs.length;
+
+      if (statHandoffs) {
+        statHandoffs.textContent = pendingHandoffs.length;
+      }
+
+      if (overviewConversionRate) {
+        overviewConversionRate.textContent = `${percent(actionTotal, callTotal)}% action rate`;
+      }
+
+      if (overviewCallMix) {
+        const rows = [
+          { label: 'Orders', value: orders.length, className: 'orders' },
+          { label: 'Reservations', value: reservations.length, className: 'reservations' },
+          { label: 'Manager handoffs', value: handoffs.length, className: 'handoffs' },
+          { label: 'All calls', value: callTotal, className: 'calls' },
+        ];
+        const max = Math.max(...rows.map(row => row.value), 1);
+        overviewCallMix.innerHTML = rows.map(row => `
+          <div class="analytics-row">
+            <div class="analytics-row-head">
+              <span>${escapeHtml(row.label)}</span>
+              <strong>${escapeHtml(row.value)}</strong>
+            </div>
+            <div class="analytics-track"><span class="analytics-fill ${row.className}" style="width: ${Math.max(percent(row.value, max), 4)}%"></span></div>
+          </div>
+        `).join('');
+      }
+
+      if (overviewActivityChart) {
+        const now = new Date();
+        const days = Array.from({ length: 7 }, (_, index) => {
+          const date = new Date(now);
+          date.setDate(now.getDate() - (6 - index));
+          const key = date.toISOString().slice(0, 10);
+          return { date, key, total: 0 };
+        });
+        const dayMap = new Map(days.map(day => [day.key, day]));
+        [...orders, ...reservations, ...calls, ...handoffs].forEach(item => {
+          const date = eventDate(item.created_at);
+          if (!date) return;
+          const key = date.toISOString().slice(0, 10);
+          if (dayMap.has(key)) dayMap.get(key).total += 1;
+        });
+        const max = Math.max(...days.map(day => day.total), 1);
+        const total = days.reduce((sum, day) => sum + day.total, 0);
+        if (overviewActivityTotal) overviewActivityTotal.textContent = `${total} events`;
+        overviewActivityChart.innerHTML = days.map(day => `
+          <div class="activity-day">
+            <div class="activity-bar"><span style="height: ${Math.max(percent(day.total, max), day.total ? 6 : 0)}%"></span></div>
+            <strong>${escapeHtml(day.total)}</strong>
+            <small>${escapeHtml(day.date.toLocaleDateString(undefined, { weekday: 'short' }))}</small>
+          </div>
+        `).join('');
+      }
+
+      if (overviewManagerStatus) {
+        overviewManagerStatus.textContent = pendingHandoffs.length ? `${pendingHandoffs.length} pending` : 'No pending issues';
+      }
+
+      if (overviewActionList) {
+        const items = pendingHandoffs.slice(0, 4);
+        if (!items.length) {
+          overviewActionList.innerHTML = '<div class="analytics-empty">No manager callbacks are waiting right now.</div>';
+        } else {
+          overviewActionList.innerHTML = items.map(handoff => `
+            <div class="overview-action-item">
+              <strong>${escapeHtml(handoff.customer_name || 'Customer')}</strong>
+              <span>${escapeHtml(handoff.reason || handoff.conversation_summary || 'Manager callback requested')}</span>
+              ${renderStatus(handoff.urgency || 'normal')}
+              <small>${escapeHtml(handoff.customer_phone || '-')}</small>
+              <small>${escapeHtml(formatDateTime(handoff.created_at))}</small>
+              <small>${escapeHtml(handoff.status || 'new')}</small>
+            </div>
+          `).join('');
+        }
+      }
+    }
+
     async function loadOperationalTables() {
       try {
         setTableMessage(ordersTableBody, 5, 'Loading orders...');
@@ -659,12 +758,20 @@ document.addEventListener('DOMContentLoaded', () => {
         } else {
           setTableMessage(handoffsTableBody, 6, handoffsResult.reason.message || 'Could not load handoff requests.', 'error');
         }
+
+        renderOverviewAnalytics({
+          orders: ordersResult.status === 'fulfilled' ? ordersResult.value.orders || [] : [],
+          reservations: reservationsResult.status === 'fulfilled' ? reservationsResult.value.reservations || [] : [],
+          calls: callsResult.status === 'fulfilled' ? callsResult.value.calls || [] : [],
+          handoffs: handoffsResult.status === 'fulfilled' ? handoffsResult.value.handoffs || [] : [],
+        });
       } catch (error) {
         const message = error.message || 'Could not load operational data.';
         setTableMessage(ordersTableBody, 5, message, 'error');
         setTableMessage(reservationsTableBody, 6, message, 'error');
         setTableMessage(callsTableBody, 5, message, 'error');
         setTableMessage(handoffsTableBody, 6, message, 'error');
+        renderOverviewAnalytics({});
       }
     }
 
@@ -688,6 +795,7 @@ document.addEventListener('DOMContentLoaded', () => {
         statCalls.textContent = summary.calls ?? '0';
         statOrders.textContent = summary.orders ?? '0';
         statReservations.textContent = summary.reservations ?? '0';
+        if (statHandoffs) statHandoffs.textContent = '0';
         setupStatus.textContent = summary.profileComplete ? 'Profile ready' : 'Profile pending';
         fillProfile(payload.profile);
         fillAgentSettings(payload.agent, payload.workflow);
