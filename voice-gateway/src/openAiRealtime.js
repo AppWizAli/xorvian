@@ -54,6 +54,10 @@ const tools = [
   },
 ];
 
+function reasoningConfig() {
+  return config.openaiRealtimeModel === 'gpt-realtime-2' ? { effort: 'low' } : undefined;
+}
+
 export class OpenAiRealtime {
   constructor({ instructions, onText, onResponseDone, onSpeechStarted, onFunctionCall, callSid }) {
     this.instructions = instructions;
@@ -127,7 +131,7 @@ export class OpenAiRealtime {
             },
           },
         },
-        temperature: 0.35,
+        reasoning: reasoningConfig(),
         tools,
         tool_choice: 'auto',
       },
@@ -246,7 +250,7 @@ export class OpenAiRealtime {
         role: 'assistant',
         content: [
           {
-            type: 'text',
+            type: 'output_text',
             text,
           },
         ],
