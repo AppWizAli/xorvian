@@ -4,10 +4,10 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Live Demo | Xorvian</title>
-  <meta name="description" content="Interactive live-call demo for Xorvian restaurant voice AI with real-time transcript, order capture, reservations, and handoff flows.">
+  <meta name="description" content="Tap to call the Xorvian live demo number and test the restaurant voice agent on your phone.">
   <link rel="stylesheet" href="index.css">
 </head>
-<body class="demo-page-body">
+<body class="demo-page-body demo-minimal-body">
   <div class="glow-blur glow-primary"></div>
   <div class="glow-blur glow-secondary"></div>
 
@@ -15,13 +15,9 @@
     <div class="container nav-container">
       <a href="./" class="logo">Xorvian <span class="logo-dot"></span></a>
       <nav class="nav-links" id="nav-menu">
-        <a href="solutions">AI Solutions</a>
+        <a href="./">Home</a>
         <a href="live-demo.html" class="nav-active" aria-current="page">Live Demo</a>
-        <a href="about">About</a>
-        <a href="pricing">Pricing</a>
-        <a href="resources">Resources</a>
         <a href="contact">Contact</a>
-        <a href="login" class="btn btn-secondary nav-auth-link">Login</a>
         <a href="signup" class="btn btn-primary nav-auth-link">Sign Up</a>
       </nav>
       <button class="mobile-menu-btn" aria-label="Toggle Navigation Menu">&#9776;</button>
@@ -29,197 +25,61 @@
   </header>
 
   <main class="page-main">
-    <section class="page-hero live-demo-hero">
-      <div class="container live-demo-hero-layout">
-        <div class="live-demo-copy">
+    <section class="live-demo-hero live-demo-hero-minimal">
+      <div class="container live-demo-hero-layout live-demo-hero-layout-minimal">
+        <div class="live-demo-copy live-demo-copy-minimal">
           <span class="section-label">Live Demo</span>
-          <h1>Watch Xorvian answer a restaurant call in real time.</h1>
+          <h1>Call Xorvian on your phone.</h1>
           <p>
-            This demo simulates the full live-call flow: an existing number forwards into the voice gateway,
-            the transcript updates in real time, and the call can become an order, a reservation, or a manager handoff.
+            Tap the button to open your dialer and test the agent with a real restaurant call.
           </p>
           <div class="hero-actions">
-            <button class="btn btn-primary" type="button" data-demo-action="start">Start live demo</button>
-            <button class="btn btn-secondary" type="button" data-demo-action="reset">Reset demo</button>
+            <a class="btn btn-primary" href="tel:+16509186100">Call +1 (650) 918-6100</a>
+            <button class="btn btn-secondary" type="button" data-copy-demo-number>Copy number</button>
           </div>
-          <div class="demo-metric-strip">
-            <article class="demo-metric">
-              <span>Turn-taking</span>
-              <strong>Live</strong>
-            </article>
-            <article class="demo-metric">
-              <span>Latency</span>
-              <strong>&lt;800ms</strong>
-            </article>
-            <article class="demo-metric">
-              <span>Languages</span>
-              <strong>Multi-lingual</strong>
-            </article>
-            <article class="demo-metric">
-              <span>Sync</span>
-              <strong>POS + Handoff</strong>
-            </article>
-          </div>
+          <p class="demo-note">Try orders, reservations, or a manager handoff.</p>
         </div>
 
-        <aside class="live-demo-preview live-demo-card">
+        <aside class="live-demo-card demo-call-card">
           <div class="demo-card-head">
-            <span>Active line</span>
-            <strong id="demo-call-type">Order capture</strong>
+            <span>Open in phone app</span>
+            <strong>Fastest path</strong>
           </div>
-          <h2 id="demo-restaurant-name">DePietro's Pizza</h2>
-          <p id="demo-caller-number">+1 (415) 555-0123 - San Francisco, CA</p>
-          <div class="demo-route" id="demo-route">Existing number -> Xorvian live gateway -> POS</div>
-          <div class="demo-mini-grid">
-            <div>
-              <span>Language</span>
-              <strong id="demo-language-label">English</strong>
-            </div>
-            <div>
-              <span>Answer rate</span>
-              <strong id="demo-answer-rate">100%</strong>
-            </div>
-            <div>
-              <span>Latency</span>
-              <strong id="demo-latency">&lt;800ms</strong>
-            </div>
-            <div>
-              <span>Sync</span>
-              <strong id="demo-sync">Live</strong>
-            </div>
-          </div>
-          <div class="demo-status-card">
-            <span class="demo-pill demo-pill-idle" id="demo-status">Idle</span>
-            <strong id="demo-timer">00:00</strong>
+          <h2>Simple, clean, ready to call.</h2>
+          <ul class="demo-list compact">
+            <li>Tap the call button</li>
+            <li>Ask for an order or reservation</li>
+            <li>Test escalation if you need it</li>
+          </ul>
+          <div class="demo-status-card compact">
+            <span class="demo-pill demo-pill-live">Live call</span>
+            <strong>Real number</strong>
           </div>
         </aside>
-      </div>
-    </section>
-
-    <section class="live-demo-stage" id="live-demo-root">
-      <div class="container live-demo-layout">
-        <article class="live-demo-card demo-control-panel">
-          <div class="panel-head">
-            <div>
-              <span class="section-label">Call Controls</span>
-              <h2>Choose a live-call scenario</h2>
-            </div>
-            <span class="demo-stage-label" id="demo-stage">Ready to start</span>
-          </div>
-
-          <div class="demo-select-grid">
-            <label class="demo-field">
-              <span>Scenario</span>
-              <select class="form-input" id="demo-scenario">
-                <option value="order">Pickup order</option>
-                <option value="reservation">Reservation</option>
-                <option value="handoff">Manager handoff</option>
-              </select>
-            </label>
-            <label class="demo-field">
-              <span>Language</span>
-              <select class="form-input" id="demo-language">
-                <option value="en">English</option>
-                <option value="es">Spanish</option>
-                <option value="hi">Hindi</option>
-                <option value="zh">Mandarin</option>
-              </select>
-            </label>
-          </div>
-
-          <div class="demo-action-row">
-            <button class="btn btn-primary" type="button" id="demo-start" data-demo-action="start">Start live demo</button>
-            <button class="btn btn-secondary" type="button" id="demo-reset" data-demo-action="reset">Reset demo</button>
-          </div>
-
-          <div class="demo-route-shell">
-            <div class="demo-route-title">Demo flow</div>
-            <div class="demo-route-steps">
-              <span>Existing number</span>
-              <span>Xorvian</span>
-              <span>POS / Reservation / Handoff</span>
-            </div>
-          </div>
-        </article>
-
-        <article class="live-demo-card demo-transcript-panel">
-          <div class="panel-head">
-            <div>
-              <span class="section-label">Live Transcript</span>
-              <h2>Conversation stream</h2>
-            </div>
-            <span class="demo-stage-label">Auto-updates every few seconds</span>
-          </div>
-          <div class="demo-transcript" id="demo-transcript">
-            <div class="demo-transcript-empty">Click Start live demo to begin the call simulation.</div>
-          </div>
-        </article>
-
-        <div class="demo-right-stack">
-          <article class="live-demo-card demo-mini-card" id="demo-order-card">
-            <div class="demo-card-head">
-              <span>Orders</span>
-              <strong>Waiting</strong>
-            </div>
-            <h3>No ticket created</h3>
-            <p>This scenario will not create an order ticket.</p>
-            <small>Useful for reservation and handoff calls.</small>
-          </article>
-
-          <article class="live-demo-card demo-mini-card" id="demo-reservation-card">
-            <div class="demo-card-head">
-              <span>Reservations</span>
-              <strong>Standing by</strong>
-            </div>
-            <h3>No table booked</h3>
-            <p>This scenario does not need a booking card.</p>
-            <small>Reservation calls will populate this panel live.</small>
-          </article>
-
-          <article class="live-demo-card demo-mini-card" id="demo-handoff-card">
-            <div class="demo-card-head">
-              <span>Handoffs</span>
-              <strong>Idle</strong>
-            </div>
-            <h3>No escalation needed</h3>
-            <p>This scenario resolves without a manager callback.</p>
-            <small>Urgent issues can be routed to SMS or dashboard.</small>
-          </article>
-
-          <article class="live-demo-card demo-mini-card" id="demo-outcome-card">
-            <div class="demo-card-head">
-              <span>Call outcome</span>
-              <strong>Ready</strong>
-            </div>
-            <h3>Live turn-taking preview</h3>
-            <p>The selected scenario will update this summary as the call progresses.</p>
-            <small>Transcript, status, and operational cards stay in sync.</small>
-          </article>
-        </div>
-      </div>
-    </section>
-
-    <section class="demo-proof-section">
-      <div class="container demo-proof-grid">
-        <article class="demo-proof-card">
-          <span>1</span>
-          <h3>Show the live call flow</h3>
-          <p>The transcript animates as the agent and caller exchange details in real time.</p>
-        </article>
-        <article class="demo-proof-card">
-          <span>2</span>
-          <h3>Prove operational sync</h3>
-          <p>Orders, reservations, and handoffs update the relevant panel as the call completes.</p>
-        </article>
-        <article class="demo-proof-card">
-          <span>3</span>
-          <h3>Support more than one language</h3>
-          <p>Switch the demo language to show how the same call behaves in different markets.</p>
-        </article>
       </div>
     </section>
   </main>
 
   <script src="index.js"></script>
+  <script>
+    (() => {
+      const demoNumber = '+16509186100';
+      const copyButton = document.querySelector('[data-copy-demo-number]');
+      if (!copyButton) return;
+
+      copyButton.addEventListener('click', async () => {
+        try {
+          await navigator.clipboard.writeText(demoNumber);
+          const original = copyButton.textContent;
+          copyButton.textContent = 'Copied';
+          setTimeout(() => {
+            copyButton.textContent = original;
+          }, 1200);
+        } catch (error) {
+          window.location.href = `tel:${demoNumber}`;
+        }
+      });
+    })();
+  </script>
 </body>
 </html>
