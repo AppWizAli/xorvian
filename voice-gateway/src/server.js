@@ -42,6 +42,14 @@ function authorized(req) {
   return url.searchParams.get('token') === config.gatewayToken;
 }
 
+function mediaPath() {
+  return config.gatewayToken ? `/media/${encodeURIComponent(config.gatewayToken)}` : '/media';
+}
+
+function authorizedMediaPath(pathname) {
+  return pathname === mediaPath();
+}
+
 async function handleIncomingCall(req, res) {
   if (!authorized(req)) {
     send(res, 401, 'Unauthorized');
@@ -50,7 +58,7 @@ async function handleIncomingCall(req, res) {
 
   const body = await readBody(req);
   const params = parseRequestParams(req, body);
-  const streamUrl = publicWebSocketUrl('/media', req);
+  const streamUrl = publicWebSocketUrl(mediaPath(), req);
 
   const customParameters = {
     restaurantId: params.get('restaurantId') || '',
@@ -121,7 +129,7 @@ const wss = new WebSocketServer({ noServer: true });
 server.on('upgrade', (req, socket, head) => {
   const url = new URL(req.url, `http://${req.headers.host}`);
 
-  if (url.pathname !== '/media' || !authorized(req)) {
+  if (!authorizedMediaPath(url.pathname)) {
     socket.write('HTTP/1.1 401 Unauthorized\r\n\r\n');
     socket.destroy();
     return;

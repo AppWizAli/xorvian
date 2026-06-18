@@ -53,10 +53,6 @@ export function publicWebSocketUrl(path, req) {
   const base = config.publicBaseUrl || `https://${req.headers.host}`;
   const url = new URL(path, base);
 
-  if (config.gatewayToken) {
-    url.searchParams.set('token', config.gatewayToken);
-  }
-
   url.protocol = url.protocol === 'http:' ? 'ws:' : 'wss:';
   return url.toString();
 }
