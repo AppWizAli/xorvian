@@ -83,6 +83,11 @@
               Click the button to run a quick order demo.
             </div>
           </div>
+          <div class="chat-typing" data-chat-demo-typing hidden>
+            <span></span>
+            <span></span>
+            <span></span>
+          </div>
 
           <div class="chat-input-preview">
             <span data-chat-demo-input>Family broasted box for pickup...</span>
@@ -118,8 +123,9 @@
       const thread = document.querySelector('[data-chat-demo-thread]');
       const status = document.querySelector('[data-chat-demo-status]');
       const input = document.querySelector('[data-chat-demo-input]');
+      const typing = document.querySelector('[data-chat-demo-typing]');
       const buttons = document.querySelectorAll('[data-start-chat-demo], [data-start-chat-demo-secondary]');
-      if (!thread || !status || !input || !buttons.length) return;
+      if (!thread || !status || !input || !typing || !buttons.length) return;
 
       const script = [
         ['customer', 'Hi, I want a family broasted chicken box for pickup.'],
@@ -146,6 +152,10 @@
         thread.scrollTop = thread.scrollHeight;
       }
 
+      function showTyping(show) {
+        typing.hidden = !show;
+      }
+
       function setButtons(text, disabled) {
         buttons.forEach((button) => {
           button.textContent = text;
@@ -163,7 +173,11 @@
         setButtons('Running...', true);
 
         script.forEach(([role, text], index) => {
-          const timer = setTimeout(() => {
+          const typingTimer = setTimeout(() => {
+            showTyping(true);
+          }, 240 + index * 1100);
+          const messageTimer = setTimeout(() => {
+            showTyping(false);
             addBubble(role, text);
             if (index === script.length - 1) {
               status.textContent = 'Complete';
@@ -171,8 +185,8 @@
               setButtons('Replay live chat', false);
               running = false;
             }
-          }, 500 + index * 950);
-          timers.push(timer);
+          }, 650 + index * 1100);
+          timers.push(typingTimer, messageTimer);
         });
       }
 
