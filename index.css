@@ -3874,6 +3874,9 @@ body.demo-minimal-body .page-main {
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 22px;
   box-shadow: 0 18px 55px rgba(0, 0, 0, 0.28);
+  display: grid;
+  grid-template-rows: auto minmax(300px, 1fr) auto;
+  height: 492px;
   overflow: hidden;
   padding: 0.85rem;
 }
@@ -3905,13 +3908,15 @@ body.demo-minimal-body .page-main {
 }
 
 .chat-thread {
-  display: grid;
+  align-content: start;
+  display: flex;
+  flex-direction: column;
   gap: 0.65rem;
-  max-height: 360px;
-  min-height: 330px;
+  min-height: 0;
   overflow: auto;
   padding: 0.9rem 0.15rem;
   scroll-behavior: smooth;
+  scrollbar-width: thin;
 }
 
 .chat-empty-state {
@@ -3920,7 +3925,7 @@ body.demo-minimal-body .page-main {
   border: 1px dashed rgba(255, 255, 255, 0.12);
   border-radius: 18px;
   color: var(--text-muted);
-  justify-self: center;
+  margin: auto 0;
   padding: 1rem 1.1rem;
   text-align: center;
 }
@@ -3933,18 +3938,19 @@ body.demo-minimal-body .page-main {
   line-height: 1.5;
   max-width: 78%;
   padding: 0.72rem 0.85rem;
+  width: fit-content;
 }
 
 .chat-bubble-customer {
+  align-self: flex-start;
   background: rgba(255, 255, 255, 0.065);
   border: 1px solid rgba(255, 255, 255, 0.075);
-  justify-self: start;
 }
 
 .chat-bubble-agent {
+  align-self: flex-end;
   background: #e8fbff;
   color: #08252c;
-  justify-self: end;
 }
 
 .chat-typing {
@@ -3954,7 +3960,7 @@ body.demo-minimal-body .page-main {
   border-radius: 999px;
   display: inline-flex;
   gap: 0.28rem;
-  margin: 0 0 0.75rem 0.15rem;
+  margin-left: 0.15rem;
   padding: 0.55rem 0.75rem;
   width: max-content;
 }
@@ -4102,6 +4108,10 @@ body.demo-minimal-body .page-main {
 
   .chat-bubble {
     max-width: 94%;
+  }
+
+  .live-chat-card {
+    height: 520px;
   }
 
   .chat-input-preview {

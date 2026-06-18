@@ -82,11 +82,11 @@
             <div class="chat-empty-state">
               Click the button to run a quick order demo.
             </div>
-          </div>
-          <div class="chat-typing" data-chat-demo-typing hidden>
-            <span></span>
-            <span></span>
-            <span></span>
+            <div class="chat-typing" data-chat-demo-typing hidden>
+              <span></span>
+              <span></span>
+              <span></span>
+            </div>
           </div>
 
           <div class="chat-input-preview">
@@ -148,12 +148,13 @@
         const bubble = document.createElement('div');
         bubble.className = `chat-bubble chat-bubble-${role}`;
         bubble.textContent = text;
-        thread.appendChild(bubble);
+        thread.insertBefore(bubble, typing);
         thread.scrollTop = thread.scrollHeight;
       }
 
       function showTyping(show) {
         typing.hidden = !show;
+        if (show) thread.scrollTop = thread.scrollHeight;
       }
 
       function setButtons(text, disabled) {
@@ -167,15 +168,17 @@
         if (running) return;
         running = true;
         clearTimers();
-        thread.innerHTML = '';
+        Array.from(thread.querySelectorAll('.chat-bubble, .chat-empty-state')).forEach((item) => item.remove());
+        showTyping(false);
         status.textContent = 'Typing';
         input.textContent = 'Running demo order...';
         setButtons('Running...', true);
 
         script.forEach(([role, text], index) => {
+          const baseDelay = index * 1650;
           const typingTimer = setTimeout(() => {
             showTyping(true);
-          }, 240 + index * 1100);
+          }, 350 + baseDelay);
           const messageTimer = setTimeout(() => {
             showTyping(false);
             addBubble(role, text);
@@ -185,7 +188,7 @@
               setButtons('Replay live chat', false);
               running = false;
             }
-          }, 650 + index * 1100);
+          }, 1250 + baseDelay);
           timers.push(typingTimer, messageTimer);
         });
       }
