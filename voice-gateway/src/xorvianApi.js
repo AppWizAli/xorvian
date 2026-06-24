@@ -23,7 +23,8 @@ async function post(path, payload) {
   }
 
   if (!response.ok || data.ok === false) {
-    const message = data.message || `Xorvian API request failed: ${response.status}`;
+    const backendError = data.error ? ` (${data.error})` : '';
+    const message = `${data.message || `Xorvian API request failed: ${response.status}`}${backendError}`;
     const error = new Error(message);
     error.status = response.status;
     error.data = data;
