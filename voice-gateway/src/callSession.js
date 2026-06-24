@@ -826,7 +826,6 @@ export class CallSession {
 
   async saveFinalCallLog() {
     if (this.callLogSaved || !this.callSid || !this.restaurantId) return;
-    this.callLogSaved = true;
 
     try {
       await saveCallLog({
@@ -839,6 +838,7 @@ export class CallSession {
         transcript: this.transcript.map((entry) => `[${entry.time}] ${entry.role}: ${entry.text}`).join('\n'),
         durationSeconds: Math.max(0, Math.round((Date.now() - this.startedAt) / 1000)),
       });
+      this.callLogSaved = true;
     } catch (error) {
       logger.warn('Failed to save final call log', {
         callSid: this.callSid,
