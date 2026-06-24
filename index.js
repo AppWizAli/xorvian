@@ -818,6 +818,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const copyForwardingNumberButton = document.querySelector('[data-copy-forwarding-number]');
     const editSectionButtons = document.querySelectorAll('[data-edit-section]');
     const cancelEditButtons = document.querySelectorAll('[data-cancel-edit]');
+    const assistantPresetButtons = document.querySelectorAll('[data-assistant-preset]');
     const ordersTableBody = document.getElementById('orders-table-body');
     const customersList = document.getElementById('customers-list');
     const customerDetailPanel = document.getElementById('customer-detail-panel');
@@ -895,6 +896,12 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     });
 
+    assistantPresetButtons.forEach(button => {
+      button.addEventListener('click', () => {
+        applyAssistantPreset(button.getAttribute('data-assistant-preset'));
+      });
+    });
+
     function formValue(form, fieldName, fallback = 'Not set') {
       const value = form?.elements?.[fieldName]?.value;
       const text = String(value || '').trim();
@@ -903,6 +910,32 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function checkedText(form, fieldName) {
       return form?.elements?.[fieldName]?.checked ? 'Enabled' : 'Disabled';
+    }
+
+    function setFieldValue(form, fieldName, value) {
+      const field = form?.elements?.[fieldName];
+      if (!field) return;
+
+      if (field.tagName === 'SELECT') {
+        const stringValue = String(value ?? '').trim();
+        if (!stringValue) {
+          field.value = '';
+          return;
+        }
+
+        const hasOption = Array.from(field.options || []).some(option => option.value === stringValue);
+        if (!hasOption) {
+          const option = document.createElement('option');
+          option.value = stringValue;
+          option.textContent = `${stringValue} (custom)`;
+          field.appendChild(option);
+        }
+
+        field.value = stringValue;
+        return;
+      }
+
+      field.value = value ?? '';
     }
 
     function renderSummaryGrid(container, items) {
@@ -1113,8 +1146,7 @@ document.addEventListener('DOMContentLoaded', () => {
       };
 
       Object.entries(map).forEach(([fieldName, value]) => {
-        const field = agentSettingsForm.elements[fieldName];
-        if (field) field.value = value || '';
+        setFieldValue(agentSettingsForm, fieldName, value);
       });
 
       if (agentSettingsForm.elements.orderEnabled) {
@@ -1139,6 +1171,77 @@ document.addEventListener('DOMContentLoaded', () => {
 
       renderAssistantSummary();
       renderWorkflowSummary();
+    }
+
+    function applyAssistantPreset(presetName) {
+      if (!agentSettingsForm) return;
+
+      const presets = {
+        'restaurant-defaults': {
+          languageCode: 'en-CA',
+          openaiModel: 'gpt-realtime-2',
+          voiceModel: 'eleven_flash_v2_5',
+          notificationChannel: 'sms',
+          notificationMinUrgency: 'urgent',
+          callMode: 'open',
+          orderReviewRequired: true,
+          orderSmsEnabled: true,
+          orderCurrency: 'CAD',
+          orderPosProvider: 'dashboard',
+          orderKitchenChannel: 'dashboard',
+          pickupLeadMinutes: 20,
+          deliveryLeadMinutes: 45,
+          cateringThresholdPeople: 25
+        },
+        'fast-orders': {
+          languageCode: 'en-CA',
+          openaiModel: 'gpt-realtime-2',
+          voiceModel: 'eleven_flash_v2_5',
+          notificationChannel: 'sms',
+          notificationMinUrgency: 'normal',
+          callMode: 'open',
+          orderReviewRequired: false,
+          orderSmsEnabled: true,
+          orderCurrency: 'CAD',
+          orderPosProvider: 'dashboard',
+          orderKitchenChannel: 'dashboard',
+          pickupLeadMinutes: 15,
+          deliveryLeadMinutes: 35,
+          cateringThresholdPeople: 20
+        },
+        'delivery-first': {
+          languageCode: 'en-CA',
+          openaiModel: 'gpt-realtime-2',
+          voiceModel: 'eleven_flash_v2_5',
+          notificationChannel: 'email',
+          notificationMinUrgency: 'urgent',
+          callMode: 'open',
+          orderReviewRequired: true,
+          orderSmsEnabled: true,
+          orderCurrency: 'CAD',
+          orderPosProvider: 'square',
+          orderKitchenChannel: 'email',
+          pickupLeadMinutes: 20,
+          deliveryLeadMinutes: 45,
+          cateringThresholdPeople: 25
+        }
+      };
+
+      const preset = presets[presetName];
+      if (!preset) return;
+
+      Object.entries(preset).forEach(([fieldName, value]) => {
+        if (fieldName === 'orderReviewRequired' || fieldName === 'orderSmsEnabled') {
+          if (agentSettingsForm.elements[fieldName]) {
+            agentSettingsForm.elements[fieldName].checked = Boolean(value);
+          }
+          return;
+        }
+
+        setFieldValue(agentSettingsForm, fieldName, value);
+      });
+
+      renderAssistantSummary();
     }
 
     function setTableMessage(tableBody, colspan, message, type = '') {

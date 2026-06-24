@@ -239,6 +239,13 @@
         </article>
 
         <form id="agent-settings-form" class="customer-form editable-section is-hidden">
+          <div class="menu-converter-actions assistant-setup-actions">
+            <span>Quick setup presets</span>
+            <button class="compact-button ghost" type="button" data-assistant-preset="restaurant-defaults">Restaurant Defaults</button>
+            <button class="compact-button ghost" type="button" data-assistant-preset="fast-orders">Fast Orders</button>
+            <button class="compact-button ghost" type="button" data-assistant-preset="delivery-first">Delivery First</button>
+          </div>
+
           <div class="form-row">
             <div class="form-group">
               <label class="form-label" for="agent-name">Agent Name</label>
@@ -246,14 +253,27 @@
             </div>
             <div class="form-group">
               <label class="form-label" for="language-code">Language Code</label>
-              <input class="form-input" id="language-code" name="languageCode" type="text" placeholder="en-CA">
+              <select class="form-input" id="language-code" name="languageCode">
+                <option value="en-CA">English (Canada)</option>
+                <option value="en-US">English (United States)</option>
+                <option value="en-GB">English (United Kingdom)</option>
+                <option value="fr-CA">French (Canada)</option>
+                <option value="es-ES">Spanish (Spain)</option>
+                <option value="hi-IN">Hindi (India)</option>
+              </select>
             </div>
           </div>
 
           <div class="form-row">
             <div class="form-group">
               <label class="form-label" for="openai-model">OpenAI Model</label>
-              <input class="form-input" id="openai-model" name="openaiModel" type="text" placeholder="gpt-realtime-2">
+              <select class="form-input" id="openai-model" name="openaiModel">
+                <option value="gpt-realtime-2">gpt-realtime-2</option>
+                <option value="gpt-realtime">gpt-realtime</option>
+                <option value="gpt-4o-mini">gpt-4o-mini</option>
+                <option value="gpt-4.1-mini">gpt-4.1-mini</option>
+                <option value="gpt-4.1">gpt-4.1</option>
+              </select>
             </div>
             <div class="form-group">
               <label class="form-label" for="openai-max-tokens">Max Tokens</label>
@@ -268,7 +288,12 @@
             </div>
             <div class="form-group">
               <label class="form-label" for="voice-model">ElevenLabs Model</label>
-              <input class="form-input" id="voice-model" name="voiceModel" type="text" placeholder="eleven_flash_v2_5">
+              <select class="form-input" id="voice-model" name="voiceModel">
+                <option value="eleven_flash_v2_5">eleven_flash_v2_5</option>
+                <option value="eleven_flash_v2">eleven_flash_v2</option>
+                <option value="eleven_turbo_v2_5">eleven_turbo_v2_5</option>
+                <option value="eleven_multilingual_v2">eleven_multilingual_v2</option>
+              </select>
             </div>
           </div>
 
@@ -414,11 +439,24 @@
           <div class="form-row">
             <div class="form-group">
               <label class="form-label" for="order-currency">Order Currency</label>
-              <input class="form-input" id="order-currency" name="orderCurrency" type="text" placeholder="CAD">
+              <select class="form-input" id="order-currency" name="orderCurrency">
+                <option value="CAD">CAD</option>
+                <option value="USD">USD</option>
+                <option value="GBP">GBP</option>
+                <option value="EUR">EUR</option>
+                <option value="AUD">AUD</option>
+              </select>
             </div>
             <div class="form-group">
               <label class="form-label" for="order-pos-provider">Kitchen / POS Provider</label>
-              <input class="form-input" id="order-pos-provider" name="orderPosProvider" type="text" placeholder="dashboard, toast, square, clover">
+              <select class="form-input" id="order-pos-provider" name="orderPosProvider">
+                <option value="dashboard">Dashboard</option>
+                <option value="toast">Toast</option>
+                <option value="square">Square</option>
+                <option value="clover">Clover</option>
+                <option value="lightspeed">Lightspeed</option>
+                <option value="custom">Custom</option>
+              </select>
             </div>
           </div>
 
@@ -429,7 +467,13 @@
             </div>
             <div class="form-group">
               <label class="form-label" for="order-kitchen-channel">Kitchen Routing Channel</label>
-              <input class="form-input" id="order-kitchen-channel" name="orderKitchenChannel" type="text" placeholder="dashboard, email, sms">
+              <select class="form-input" id="order-kitchen-channel" name="orderKitchenChannel">
+                <option value="dashboard">Dashboard</option>
+                <option value="email">Email</option>
+                <option value="sms">SMS</option>
+                <option value="slack">Slack</option>
+                <option value="webhook">Webhook</option>
+              </select>
             </div>
           </div>
 
