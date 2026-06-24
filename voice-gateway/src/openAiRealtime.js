@@ -129,13 +129,13 @@ export class OpenAiRealtime {
   sessionUpdate() {
     this.send({
       type: 'session.update',
-        session: {
-          type: 'realtime',
-          model: this.model,
-          output_modalities: ['text'],
-          instructions: this.instructions,
-          audio: {
-            input: {
+      session: {
+        type: 'realtime',
+        model: this.model,
+        output_modalities: ['text'],
+        instructions: this.instructions,
+        audio: {
+          input: {
             format: {
               type: 'audio/pcm',
               rate: 24000,
@@ -146,8 +146,8 @@ export class OpenAiRealtime {
             turn_detection: {
               type: 'server_vad',
               threshold: 0.45,
-              prefix_padding_ms: 250,
-              silence_duration_ms: 350,
+              prefix_padding_ms: 200,
+              silence_duration_ms: 220,
               create_response: true,
             },
           },
