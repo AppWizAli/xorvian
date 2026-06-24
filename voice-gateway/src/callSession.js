@@ -23,6 +23,14 @@ function truncate(value, maxLength) {
   return String(value || '').replace(/\s+/g, ' ').trim().slice(0, maxLength);
 }
 
+function normalizeModelName(value) {
+  return String(value || '').trim();
+}
+
+function isRealtimeModelName(value) {
+  return /realtime/i.test(String(value || ''));
+}
+
 function shouldNotify(settings, urgency) {
   if (settings.notificationEnabled === false) return false;
   const channel = String(settings.notificationChannel || 'sms').toLowerCase();
@@ -64,6 +72,7 @@ export class CallSession {
     this.callLogSaved = false;
     this.silenceWarningHandle = null;
     this.silenceHangupHandle = null;
+    this.textFlushHandle = null;
     this.lastCallerActivityAt = Date.now();
     this.lastAssistantActivityAt = Date.now();
     this.modelName = '';
@@ -87,6 +96,24 @@ export class CallSession {
       clearTimeout(this.silenceHangupHandle);
       this.silenceHangupHandle = null;
     }
+  }
+
+  clearTextFlushTimer() {
+    if (this.textFlushHandle) {
+      clearTimeout(this.textFlushHandle);
+      this.textFlushHandle = null;
+    }
+  }
+
+  scheduleTextFlush() {
+    this.clearTextFlushTimer();
+
+    this.textFlushHandle = setTimeout(() => {
+      this.textFlushHandle = null;
+      if (this.closed) return;
+      if (!this.textBuffer.trim()) return;
+      void this.flushModelText();
+    }, 140);
   }
 
   scheduleSilenceTimers() {
@@ -281,49 +308,72 @@ export class CallSession {
       onAudio: (payload) => this.sendAudio(payload),
     });
 
-    try {
-      await this.tts.connect();
-    } catch (error) {
-      await this.activateFailover(error);
-      return;
-    }
+    const ttsConnectPromise = this.tts.connect();
+    const realtimeFallback = isRealtimeModelName(config.openaiRealtimeModel)
+      ? normalizeModelName(config.openaiRealtimeModel)
+      : 'gpt-realtime-2';
+    const requestedModels = [
+      normalizeModelName(settings.openaiModel),
+      normalizeModelName(settings.backupOpenaiModel || config.openaiFallbackRealtimeModel),
+      realtimeFallback,
+    ].filter(Boolean);
+    const models = [];
 
-    const models = [
-      settings.openaiModel || config.openaiRealtimeModel,
-      settings.backupOpenaiModel || config.openaiFallbackRealtimeModel,
-    ].filter((value, index, array) => value && array.indexOf(value) === index);
-
-    let connectError = null;
-    for (const model of models) {
-      this.openai = new OpenAiRealtime({
-        instructions,
-        callSid: this.callSid,
-        model,
-        transcriptionModel: config.openaiTranscriptionModel,
-        onText: (delta) => this.handleModelText(delta),
-        onResponseDone: () => this.flushModelText(),
-        onSpeechStarted: () => this.handleCallerInterrupt(),
-        onFunctionCall: (name, args) => this.handleFunctionCall(name, args),
-        onTranscript: (entry) => this.appendTranscript(entry.role || 'user', entry.text || ''),
-      });
-
-      try {
-        await this.openai.connect();
-        this.modelName = model;
-        connectError = null;
-        break;
-      } catch (error) {
-        connectError = error;
-        logger.warn('OpenAI realtime connect failed', {
+    for (const model of requestedModels) {
+      if (!isRealtimeModelName(model)) {
+        logger.warn('Skipping unsupported OpenAI model for realtime voice', {
           callSid: this.callSid,
           model,
-          error: error.message,
         });
+        continue;
+      }
+
+      if (!models.includes(model)) {
+        models.push(model);
       }
     }
 
-    if (!this.openai || connectError) {
-      await this.activateFailover(connectError || new Error('OpenAI connection unavailable.'));
+    let openaiConnectError = null;
+    const openaiConnectPromise = (async () => {
+      for (const model of models) {
+        this.openai = new OpenAiRealtime({
+          instructions,
+          callSid: this.callSid,
+          model,
+          transcriptionModel: config.openaiTranscriptionModel,
+          onText: (delta) => this.handleModelText(delta),
+          onResponseDone: () => this.flushModelText(),
+          onSpeechStarted: () => this.handleCallerInterrupt(),
+          onFunctionCall: (name, args) => this.handleFunctionCall(name, args),
+          onTranscript: (entry) => this.appendTranscript(entry.role || 'user', entry.text || ''),
+        });
+
+        try {
+          await this.openai.connect();
+          this.modelName = model;
+          return;
+        } catch (error) {
+          openaiConnectError = error;
+          logger.warn('OpenAI realtime connect failed', {
+            callSid: this.callSid,
+            model,
+            error: error.message,
+          });
+        }
+      }
+
+      throw openaiConnectError || new Error('OpenAI connection unavailable.');
+    })();
+
+    const [ttsResult, openaiResult] = await Promise.allSettled([ttsConnectPromise, openaiConnectPromise]);
+
+    if (ttsResult.status === 'rejected') {
+      await this.activateFailover(ttsResult.reason);
+      return;
+    }
+
+    if (openaiResult.status === 'rejected') {
+      await this.activateFailover(openaiResult.reason || new Error('OpenAI connection unavailable.'));
       return;
     }
 
@@ -366,6 +416,7 @@ export class CallSession {
 
   handleCallerInterrupt() {
     this.markCallerActivity();
+    this.clearTextFlushTimer();
     this.textBuffer = '';
     this.clearAudio();
     this.tts?.close();
@@ -386,26 +437,28 @@ export class CallSession {
 
   handleModelText(delta) {
     this.textBuffer += delta;
+    const cleanLength = this.textBuffer.trim().length;
+    const sentenceReady = /[.!?]\s*$/.test(this.textBuffer) || /[.!?]\s/.test(this.textBuffer);
+    const longEnough = cleanLength >= 40;
 
-    const ready = /[.!?]\s$/.test(this.textBuffer) || this.textBuffer.length >= 120;
-    if (!ready) return;
+    if (sentenceReady || longEnough) {
+      void this.flushModelText({ immediate: true });
+      return;
+    }
 
-    const chunk = this.textBuffer;
-    this.textBuffer = '';
-    this.appendTranscript('assistant', chunk);
-    this.tts?.speak(chunk, { flush: false }).catch((error) => {
-      logger.warn('ElevenLabs speak failed', { callSid: this.callSid, error: error.message });
-    });
-    this.scheduleSilenceTimers();
+    if (cleanLength >= 12) {
+      this.scheduleTextFlush();
+    }
   }
 
-  flushModelText() {
+  flushModelText({ immediate = false } = {}) {
+    this.clearTextFlushTimer();
     const chunk = this.textBuffer.trim();
     this.textBuffer = '';
     if (!chunk) return;
 
     this.appendTranscript('assistant', chunk);
-    this.tts?.speak(chunk, { flush: true }).then(() => this.tts?.flush()).catch((error) => {
+    this.tts?.speak(chunk, { flush: immediate }).then(() => this.tts?.flush()).catch((error) => {
       logger.warn('ElevenLabs flush failed', { callSid: this.callSid, error: error.message });
     });
     this.scheduleSilenceTimers();
@@ -588,6 +641,7 @@ export class CallSession {
     if (this.closed) return;
     this.closed = true;
     this.clearSilenceTimers();
+    this.clearTextFlushTimer();
     this.tts?.close();
     this.openai?.close();
     void this.saveFinalCallLog();
