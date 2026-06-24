@@ -17,6 +17,7 @@ export const config = {
   gatewayToken: env('VOICE_GATEWAY_TOKEN'),
   openaiApiKey: env('OPENAI_API_KEY'),
   openaiRealtimeModel: env('OPENAI_REALTIME_MODEL', 'gpt-realtime-2'),
+  openaiFallbackRealtimeModel: env('OPENAI_FALLBACK_REALTIME_MODEL', ''),
   openaiTranscriptionModel: env('OPENAI_TRANSCRIPTION_MODEL', 'whisper-1'),
   elevenLabsApiKey: env('ELEVENLABS_API_KEY'),
   elevenLabsDefaultVoiceId: env('ELEVENLABS_DEFAULT_VOICE_ID', 'ugPTAEnkrnbtfSNMzaSY'),

@@ -66,13 +66,26 @@ function reasoningConfig() {
 }
 
 export class OpenAiRealtime {
-  constructor({ instructions, onText, onResponseDone, onSpeechStarted, onFunctionCall, callSid }) {
+  constructor({
+    instructions,
+    onText,
+    onResponseDone,
+    onSpeechStarted,
+    onFunctionCall,
+    onTranscript,
+    callSid,
+    model,
+    transcriptionModel,
+  }) {
     this.instructions = instructions;
     this.onText = onText;
     this.onResponseDone = onResponseDone;
     this.onSpeechStarted = onSpeechStarted;
     this.onFunctionCall = onFunctionCall;
+    this.onTranscript = onTranscript;
     this.callSid = callSid;
+    this.model = model || config.openaiRealtimeModel;
+    this.transcriptionModel = transcriptionModel || config.openaiTranscriptionModel;
     this.ws = null;
     this.openPromise = null;
     this.functionArgs = new Map();
@@ -82,7 +95,7 @@ export class OpenAiRealtime {
   async connect() {
     if (this.openPromise) return this.openPromise;
 
-    const url = `wss://api.openai.com/v1/realtime?model=${encodeURIComponent(config.openaiRealtimeModel)}`;
+    const url = `wss://api.openai.com/v1/realtime?model=${encodeURIComponent(this.model)}`;
     this.openPromise = new Promise((resolve, reject) => {
       this.ws = new WebSocket(url, {
         headers: {
@@ -116,19 +129,19 @@ export class OpenAiRealtime {
   sessionUpdate() {
     this.send({
       type: 'session.update',
-      session: {
-        type: 'realtime',
-        model: config.openaiRealtimeModel,
-        output_modalities: ['text'],
-        instructions: this.instructions,
-        audio: {
-          input: {
+        session: {
+          type: 'realtime',
+          model: this.model,
+          output_modalities: ['text'],
+          instructions: this.instructions,
+          audio: {
+            input: {
             format: {
               type: 'audio/pcm',
               rate: 24000,
             },
             transcription: {
-              model: config.openaiTranscriptionModel,
+              model: this.transcriptionModel,
             },
             turn_detection: {
               type: 'server_vad',
@@ -159,6 +172,17 @@ export class OpenAiRealtime {
 
     if (event.type === 'input_audio_buffer.speech_started') {
       this.onSpeechStarted?.();
+      return;
+    }
+
+    if (event.type === 'conversation.item.input_audio_transcription.completed') {
+      const text = event.transcript || event.text || event.item?.content?.[0]?.text || '';
+      if (text) {
+        this.onTranscript?.({
+          role: 'user',
+          text,
+        });
+      }
       return;
     }
 

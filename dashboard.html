@@ -320,6 +320,55 @@
 
           <div class="form-row">
             <div class="form-group">
+              <label class="form-label" for="call-mode">Call Answering Mode</label>
+              <select class="form-input" id="call-mode" name="callMode">
+                <option value="open">Open</option>
+                <option value="closed">Closed</option>
+                <option value="holiday">Holiday</option>
+                <option value="private_event">Private Event</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="backup-openai-model">Backup OpenAI Model</label>
+              <input class="form-input" id="backup-openai-model" name="backupOpenaiModel" type="text" placeholder="gpt-realtime-mini">
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="silence-prompt-seconds">Silence Prompt Seconds</label>
+              <input class="form-input" id="silence-prompt-seconds" name="silencePromptSeconds" type="number" min="1" max="60" placeholder="10">
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="silence-hangup-seconds">Silence Hangup Seconds</label>
+              <input class="form-input" id="silence-hangup-seconds" name="silenceHangupSeconds" type="number" min="2" max="120" placeholder="20">
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="closed-message">Closed Message</label>
+              <input class="form-input" id="closed-message" name="closedMessage" type="text" placeholder="We are currently closed.">
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="holiday-message">Holiday Message</label>
+              <input class="form-input" id="holiday-message" name="holidayMessage" type="text" placeholder="We are closed today due to holiday hours.">
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="private-event-message">Private Event Message</label>
+              <input class="form-input" id="private-event-message" name="privateEventMessage" type="text" placeholder="We are closed for a private event.">
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="repeat-caller-greeting">Repeat Caller Greeting</label>
+              <input class="form-input" id="repeat-caller-greeting" name="repeatCallerGreeting" type="text" placeholder="Welcome back, {{name}}. How can I help you today?">
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
               <label class="form-label" for="notification-phone">Notification Phone</label>
               <input class="form-input" id="notification-phone" name="notificationPhone" type="text" placeholder="+44...">
             </div>
