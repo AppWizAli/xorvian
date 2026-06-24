@@ -69,6 +69,7 @@ $userId = (int)$row['user_id'];
 $menu = format_menu_for_user($userId);
 $callSid = clean_string($data, 'callSid', 120);
 $fromPhone = clean_string($data, 'from', 40);
+$fromPhoneDigits = preg_replace('/\D+/', '', $fromPhone) ?: '';
 $country = trim((string)($row['country'] ?? '')) ?: 'Canada';
 $isCanada = strcasecmp($country, 'Canada') === 0 || strcasecmp($country, 'CA') === 0;
 $timezone = $row['timezone'] ?: ($isCanada ? 'America/Toronto' : 'Asia/Karachi');
@@ -117,6 +118,89 @@ if ($callSid !== '' || $fromPhone !== '') {
     }
 }
 
+$callerHistory = [
+    'repeatCaller' => false,
+    'knownName' => '',
+    'recentItems' => [],
+];
+
+if ($fromPhoneDigits !== '') {
+    $phoneExprOrder = "REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(COALESCE(customer_phone, ''), '+', ''), ' ', ''), '-', ''), '(', ''), ')', '')";
+    $phoneExprReservation = "REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(COALESCE(guest_phone, ''), '+', ''), ' ', ''), '-', ''), '(', ''), ')', '')";
+    $phoneExprCall = "REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(COALESCE(caller_phone, ''), '+', ''), ' ', ''), '-', ''), '(', ''), ')', '')";
+    $phoneExprHandoff = "REPLACE(REPLACE(REPLACE(REPLACE(REPLACE(COALESCE(customer_phone, ''), '+', ''), ' ', ''), '-', ''), '(', ''), ')', '')";
+
+    $historyStmt = db()->prepare(
+        "SELECT source, name, summary, created_at FROM (
+            SELECT 'order' AS source,
+                   NULLIF(customer_name, '') AS name,
+                   NULLIF(order_items, '') AS summary,
+                   created_at
+            FROM orders
+            WHERE user_id = :user_id_order
+              AND $phoneExprOrder = :phone_digits_order
+            UNION ALL
+            SELECT 'reservation' AS source,
+                   NULLIF(guest_name, '') AS name,
+                   CONCAT('Reservation ', COALESCE(reservation_date, ''), ' ', COALESCE(reservation_time, '')) AS summary,
+                   created_at
+            FROM reservations
+            WHERE user_id = :user_id_reservation
+              AND $phoneExprReservation = :phone_digits_reservation
+            UNION ALL
+            SELECT 'handoff' AS source,
+                   NULLIF(customer_name, '') AS name,
+                   NULLIF(reason, '') AS summary,
+                   created_at
+            FROM handoff_requests
+            WHERE user_id = :user_id_handoff
+              AND $phoneExprHandoff = :phone_digits_handoff
+            UNION ALL
+            SELECT 'call' AS source,
+                   NULL AS name,
+                   NULLIF(ai_summary, '') AS summary,
+                   created_at
+            FROM call_logs
+            WHERE user_id = :user_id_call
+              AND $phoneExprCall = :phone_digits_call
+        ) AS history
+        ORDER BY created_at DESC
+        LIMIT 6"
+    );
+    $historyStmt->execute([
+        ':user_id_order' => $userId,
+        ':user_id_reservation' => $userId,
+        ':user_id_handoff' => $userId,
+        ':user_id_call' => $userId,
+        ':phone_digits_order' => $fromPhoneDigits,
+        ':phone_digits_reservation' => $fromPhoneDigits,
+        ':phone_digits_handoff' => $fromPhoneDigits,
+        ':phone_digits_call' => $fromPhoneDigits,
+    ]);
+    $historyRows = $historyStmt->fetchAll();
+    $knownName = '';
+
+    foreach ($historyRows as $historyRow) {
+        $name = trim((string)($historyRow['name'] ?? ''));
+        if ($knownName === '' && $name !== '') {
+            $knownName = $name;
+        }
+    }
+
+    $callerHistory = [
+        'repeatCaller' => count($historyRows) > 0,
+        'knownName' => $knownName,
+        'recentItems' => array_map(static function (array $historyRow): array {
+            return [
+                'source' => $historyRow['source'] ?? '',
+                'name' => $historyRow['name'] ?? '',
+                'summary' => $historyRow['summary'] ?? '',
+                'createdAt' => $historyRow['created_at'] ?? '',
+            ];
+        }, $historyRows),
+    ];
+}
+
 json_response([
     'ok' => true,
     'restaurantId' => (string)$userId,
@@ -145,12 +229,21 @@ json_response([
         'social' => ['facebook' => '', 'instagram' => '', 'website' => ''],
         'gatherMessage' => $row['gather_message'] ?: 'Is there anything else you need?',
         'closingMessage' => $row['closing_message'] ?: 'Thank you. Goodbye.',
+        'callMode' => $row['call_mode'] ?: 'open',
+        'closedMessage' => $row['closed_message'] ?: 'We are currently closed.',
+        'holidayMessage' => $row['holiday_message'] ?: 'We are closed today due to holiday hours.',
+        'privateEventMessage' => $row['private_event_message'] ?: 'We are closed for a private event.',
+        'repeatCallerGreeting' => $row['repeat_caller_greeting'] ?: 'Welcome back, {{name}}. How can I help you today?',
+        'silencePromptSeconds' => (int)($row['silence_prompt_seconds'] ?? 10),
+        'silenceHangupSeconds' => (int)($row['silence_hangup_seconds'] ?? 20),
+        'backupOpenaiModel' => $row['backup_openai_model'] ?: '',
         'webhookPath' => $row['n8n_webhook_path'] ?: $webhookPath,
         'reservationPolicy' => $row['reservation_policy'] ?: '',
         'menuNotes' => $row['menu_notes'] ?: '',
         'knowledgeBase' => $row['knowledge_base'] ?: '',
     ],
     'menu' => $menu,
+    'callerHistory' => $callerHistory,
     'settings' => [
         'openaiModel' => $row['openai_model'] ?: 'gpt-4o-mini',
         'openaiTemperature' => (float)($row['openai_temperature'] ?? 0.3),
@@ -166,6 +259,14 @@ json_response([
         'notificationPhone' => $row['notification_phone'] ?: ($row['escalation_phone'] ?: ''),
         'notificationEmail' => $row['notification_email'] ?: '',
         'notificationMinUrgency' => $row['notification_min_urgency'] ?: 'urgent',
+        'callMode' => $row['call_mode'] ?: 'open',
+        'closedMessage' => $row['closed_message'] ?: 'We are currently closed.',
+        'holidayMessage' => $row['holiday_message'] ?: 'We are closed today due to holiday hours.',
+        'privateEventMessage' => $row['private_event_message'] ?: 'We are closed for a private event.',
+        'repeatCallerGreeting' => $row['repeat_caller_greeting'] ?: 'Welcome back, {{name}}. How can I help you today?',
+        'silencePromptSeconds' => (int)($row['silence_prompt_seconds'] ?? 10),
+        'silenceHangupSeconds' => (int)($row['silence_hangup_seconds'] ?? 20),
+        'backupOpenaiModel' => $row['backup_openai_model'] ?: '',
         'systemPrompt' => $row['system_prompt'] ?: '',
     ],
 ]);

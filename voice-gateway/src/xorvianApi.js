@@ -84,3 +84,25 @@ export async function saveHandoff({
     notificationError,
   });
 }
+
+export async function saveCallLog({
+  restaurantId,
+  callSid,
+  callerPhone,
+  callType,
+  callStatus,
+  summary,
+  transcript,
+  durationSeconds,
+}) {
+  return post('n8n_save_call.php', {
+    restaurantId,
+    callSid,
+    callerPhone,
+    callType,
+    callStatus,
+    summary,
+    transcript,
+    durationSeconds,
+  });
+}
