@@ -36,6 +36,18 @@ ngrok http 8080
 
 Set `PUBLIC_BASE_URL` to the HTTPS ngrok URL.
 
+For Square webhook testing, the voice gateway also accepts:
+
+```text
+POST /square/webhook
+```
+
+So your public notification URL becomes:
+
+```text
+https://YOUR-NGROK-DOMAIN/square/webhook
+```
+
 ## Required Environment
 
 ```bash
