@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { ElevenLabsStream } from './elevenLabsStream.js';
 import { OpenAiRealtime } from './openAiRealtime.js';
 import { config } from './config.js';
@@ -53,6 +54,45 @@ function twilioFrom(channel) {
   return config.twilioFromPhone;
 }
 
+function normalizeOrderType(value) {
+  const orderType = String(value || 'pickup').toLowerCase();
+  return ['pickup', 'delivery', 'catering', 'scheduled', 'asap', 'dine_in'].includes(orderType)
+    ? orderType
+    : 'pickup';
+}
+
+function normalizeTextList(value) {
+  if (Array.isArray(value)) {
+    return value.map((entry) => String(entry || '').trim()).filter(Boolean);
+  }
+
+  if (value == null) {
+    return [];
+  }
+
+  return String(value)
+    .split(/[,;\n]/)
+    .map((entry) => entry.trim())
+    .filter(Boolean);
+}
+
+function parseMaybeJson(value) {
+  if (Array.isArray(value) || (value && typeof value === 'object')) {
+    return value;
+  }
+
+  if (typeof value !== 'string' || value.trim() === '') {
+    return null;
+  }
+
+  try {
+    const parsed = JSON.parse(value);
+    return parsed && typeof parsed === 'object' ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
 export class CallSession {
   constructor(twilioWs) {
     this.twilioWs = twilioWs;
@@ -65,9 +105,11 @@ export class CallSession {
     this.openai = null;
     this.tts = null;
     this.textBuffer = '';
+    this.orderDraft = this.createEmptyOrderDraft();
     this.transcript = [];
     this.currentIntent = 'unknown';
     this.callSummary = '';
+    this.orderCompleted = false;
     this.finalStatus = 'completed';
     this.callLogSaved = false;
     this.silenceWarningHandle = null;
@@ -78,6 +120,54 @@ export class CallSession {
     this.modelName = '';
     this.closed = false;
     this.startedAt = Date.now();
+  }
+
+  createEmptyOrderDraft() {
+    return {
+      orderType: 'pickup',
+      fulfillment: 'pickup',
+      customer: {
+        name: '',
+        phone: '',
+        address: '',
+        apartmentNumber: '',
+        instructions: '',
+      },
+      delivery: {
+        address: '',
+        apartmentNumber: '',
+        instructions: '',
+      },
+      pickup: {
+        instructions: '',
+        readyBy: '',
+      },
+      schedule: {
+        scheduledFor: '',
+        eventType: '',
+        guestCount: 0,
+        budget: null,
+      },
+      catering: {
+        eventType: '',
+        guestCount: 0,
+        budget: null,
+        date: '',
+        time: '',
+      },
+      items: [],
+      notes: '',
+      reviewConfirmed: false,
+      pricing: {
+        subtotal: null,
+        tax: null,
+        deliveryFee: null,
+        discount: null,
+        total: null,
+        currency: this.context?.settings?.orderCurrency || config.defaultCurrency,
+      },
+      lastReviewSummary: '',
+    };
   }
 
   markCallerActivity() {
@@ -149,8 +239,548 @@ export class CallSession {
     this.transcript.push({ role, text: clean, time: new Date().toISOString() });
     if (role === 'assistant') {
       this.lastAssistantActivityAt = Date.now();
-      this.callSummary = clean;
+      if (!this.orderCompleted || !this.callSummary) {
+        this.callSummary = clean;
+      }
     }
+  }
+
+  getOrderSettings() {
+    return this.context?.settings || {};
+  }
+
+  getMenuEntries() {
+    const categories = Array.isArray(this.context?.menu?.categories) ? this.context.menu.categories : [];
+    const entries = [];
+
+    for (const category of categories) {
+      const items = Array.isArray(category.items) ? category.items : [];
+      for (const item of items) {
+        entries.push({
+          category: String(category.name || '').trim(),
+          name: String(item.name || '').trim(),
+          price: item.price === '' || item.price == null ? null : Number(item.price),
+          sizes: item.sizes || parseMaybeJson(item.sizes_json) || null,
+          description: String(item.description || '').trim(),
+          modifiers: item.modifiers || '',
+          modifierPrices: item.modifierPrices || parseMaybeJson(item.modifier_prices_json) || null,
+          isAvailable: item.isAvailable !== undefined ? Boolean(item.isAvailable) : String(item.is_available ?? '1') === '1',
+          searchKeywords: String(item.searchKeywords || item.search_keywords || '').trim(),
+          allergenNotes: String(item.allergenNotes || item.allergen_notes || '').trim(),
+          isFeatured: item.isFeatured !== undefined ? Boolean(item.isFeatured) : String(item.is_featured ?? '0') === '1',
+        });
+      }
+    }
+
+    return entries;
+  }
+
+  searchMenuItems(query, category = '', limit = 8) {
+    const normalizedQuery = String(query || '').trim().toLowerCase();
+    const normalizedCategory = String(category || '').trim().toLowerCase();
+    const tokens = normalizedQuery.split(/\s+/).filter(Boolean);
+    const matches = this.getMenuEntries().map((entry) => {
+      const haystack = [
+        entry.category,
+        entry.name,
+        entry.description,
+        entry.modifiers,
+        entry.searchKeywords,
+        entry.allergenNotes,
+      ]
+        .join(' ')
+        .toLowerCase();
+
+      let score = 0;
+      if (normalizedCategory && entry.category.toLowerCase().includes(normalizedCategory)) score += 4;
+      if (normalizedQuery && entry.name.toLowerCase() === normalizedQuery) score += 30;
+      if (normalizedQuery && entry.name.toLowerCase().includes(normalizedQuery)) score += 15;
+      for (const token of tokens) {
+        if (haystack.includes(token)) score += 2;
+      }
+      if (entry.isFeatured) score += 2;
+      if (!entry.isAvailable) score -= 6;
+
+      return { ...entry, score };
+    });
+
+    return matches
+      .filter((entry) => !normalizedCategory || entry.category.toLowerCase().includes(normalizedCategory) || entry.name.toLowerCase().includes(normalizedCategory))
+      .filter((entry) => entry.score > 0 || !normalizedQuery)
+      .sort((a, b) => b.score - a.score || a.name.localeCompare(b.name))
+      .slice(0, Math.max(1, Math.min(20, Number(limit || 8))))
+      .map((entry) => ({
+        category: entry.category,
+        name: entry.name,
+        price: entry.price,
+        sizes: entry.sizes,
+        description: entry.description,
+        modifiers: entry.modifiers,
+        isAvailable: entry.isAvailable,
+        isFeatured: entry.isFeatured,
+        searchKeywords: entry.searchKeywords,
+        allergenNotes: entry.allergenNotes,
+      }));
+  }
+
+  resolveMenuItem(query, category = '', size = '') {
+    const [best] = this.searchMenuItems(query, category, 1);
+    if (!best) return null;
+
+    const entry = this.getMenuEntries().find((item) => item.name === best.name && item.category === best.category);
+    if (!entry) return null;
+
+    let unitPrice = entry.price;
+    if (entry.sizes && typeof entry.sizes === 'object' && size) {
+      const matchKey = Object.keys(entry.sizes).find((key) => key.toLowerCase() === String(size).trim().toLowerCase());
+      if (matchKey) {
+        unitPrice = Number(entry.sizes[matchKey]);
+      }
+    } else if (entry.sizes && typeof entry.sizes === 'object') {
+      const firstSize = Object.keys(entry.sizes)[0];
+      if (firstSize) {
+        unitPrice = Number(entry.sizes[firstSize]);
+      }
+    }
+
+    return {
+      ...entry,
+      unitPrice: Number.isFinite(unitPrice) ? Number(unitPrice) : null,
+    };
+  }
+
+  resolveModifierPrice(entry, modifierName) {
+    const modifierPrices = entry?.modifierPrices;
+    if (!modifierPrices || typeof modifierPrices !== 'object') return 0;
+
+    const normalized = String(modifierName || '').trim().toLowerCase();
+    for (const [key, value] of Object.entries(modifierPrices)) {
+      if (String(key).trim().toLowerCase() === normalized) {
+        const price = Number(value);
+        return Number.isFinite(price) ? price : 0;
+      }
+    }
+
+    return 0;
+  }
+
+  calculateCartPricing() {
+    const settings = this.getOrderSettings();
+    const orderCurrency = settings.orderCurrency || config.defaultCurrency;
+    const orderTaxRate = Math.max(0, Number(settings.orderTaxRate || 0));
+    const deliveryFee = Math.max(0, Number(settings.deliveryFee || 0));
+
+    const items = this.orderDraft.items.map((item) => {
+      const quantity = Math.max(1, Number(item.quantity || 1));
+      const unitPrice = Number(item.unitPrice || 0);
+      const modifierPrice = (item.modifiers || []).reduce((sum, modifier) => sum + this.resolveModifierPrice(item.menuEntry, modifier), 0);
+      const lineSubtotal = (unitPrice + modifierPrice) * quantity;
+      return {
+        ...item,
+        quantity,
+        lineSubtotal,
+        lineSubtotalDisplay: lineSubtotal.toFixed(2),
+      };
+    });
+
+    const subtotal = items.reduce((sum, item) => sum + Number(item.lineSubtotal || 0), 0);
+    const taxableBase = subtotal;
+    const tax = taxableBase * orderTaxRate;
+    const needsDeliveryFee = normalizeOrderType(this.orderDraft.orderType) === 'delivery';
+    const delivery = needsDeliveryFee ? deliveryFee : 0;
+    const discount = Math.max(0, Number(this.orderDraft.pricing.discount || 0));
+    const total = Math.max(0, subtotal + tax + delivery - discount);
+
+    this.orderDraft.items = items;
+    this.orderDraft.pricing = {
+      subtotal: Number(subtotal.toFixed(2)),
+      tax: Number(tax.toFixed(2)),
+      deliveryFee: Number(delivery.toFixed(2)),
+      discount: Number(discount.toFixed(2)),
+      total: Number(total.toFixed(2)),
+      currency: orderCurrency,
+    };
+
+    return this.orderDraft.pricing;
+  }
+
+  cartSummaryText() {
+    const pricing = this.calculateCartPricing();
+    const items = this.orderDraft.items.map((item) => {
+      const modifiers = item.modifiers?.length ? ` (${item.modifiers.join(', ')})` : '';
+      const size = item.size ? ` ${item.size}` : '';
+      const notes = item.specialInstructions ? ` - ${item.specialInstructions}` : '';
+      return `${item.quantity} x ${item.name}${size}${modifiers}${notes}`;
+    });
+
+    const contextBits = [
+      `Type: ${this.orderDraft.orderType}`,
+      this.orderDraft.customer.name ? `Name: ${this.orderDraft.customer.name}` : '',
+      this.orderDraft.customer.phone ? `Phone: ${this.orderDraft.customer.phone}` : '',
+      this.orderDraft.orderType === 'delivery' && this.orderDraft.customer.address ? `Address: ${this.orderDraft.customer.address}` : '',
+      this.orderDraft.orderType === 'catering' && this.orderDraft.catering.eventType ? `Event: ${this.orderDraft.catering.eventType}` : '',
+      this.orderDraft.schedule.scheduledFor ? `Scheduled: ${this.orderDraft.schedule.scheduledFor}` : '',
+    ].filter(Boolean);
+
+    return [
+      ...contextBits,
+      ...items,
+      `Subtotal: ${pricing.currency} ${pricing.subtotal.toFixed(2)}`,
+      `Tax: ${pricing.currency} ${pricing.tax.toFixed(2)}`,
+      `Delivery fee: ${pricing.currency} ${pricing.deliveryFee.toFixed(2)}`,
+      `Total: ${pricing.currency} ${pricing.total.toFixed(2)}`,
+    ].join(' | ');
+  }
+
+  applyOrderDetails(details = {}) {
+    if (details.orderType) {
+      this.orderDraft.orderType = normalizeOrderType(details.orderType);
+    }
+
+    if (details.fulfillment) {
+      this.orderDraft.fulfillment = normalizeOrderType(details.fulfillment);
+    } else if (details.orderType) {
+      this.orderDraft.fulfillment = normalizeOrderType(details.orderType === 'scheduled' ? this.orderDraft.fulfillment || 'pickup' : details.orderType);
+    }
+
+    if (details.customerName !== undefined) this.orderDraft.customer.name = String(details.customerName || '').trim();
+    if (details.customerPhone !== undefined) this.orderDraft.customer.phone = normalizePhone(details.customerPhone);
+    if (details.address !== undefined) {
+      this.orderDraft.customer.address = String(details.address || '').trim();
+      this.orderDraft.delivery.address = this.orderDraft.customer.address;
+    }
+    if (details.apartmentNumber !== undefined) {
+      this.orderDraft.customer.apartmentNumber = String(details.apartmentNumber || '').trim();
+      this.orderDraft.delivery.apartmentNumber = this.orderDraft.customer.apartmentNumber;
+    }
+    if (details.instructions !== undefined) {
+      this.orderDraft.customer.instructions = String(details.instructions || '').trim();
+      this.orderDraft.delivery.instructions = this.orderDraft.customer.instructions;
+      this.orderDraft.pickup.instructions = this.orderDraft.customer.instructions;
+    }
+    if (details.scheduledFor !== undefined) this.orderDraft.schedule.scheduledFor = String(details.scheduledFor || '').trim();
+    if (details.eventType !== undefined) this.orderDraft.catering.eventType = String(details.eventType || '').trim();
+    if (details.guestCount !== undefined) {
+      const guestCount = Math.max(0, parseInt(details.guestCount, 10) || 0);
+      this.orderDraft.schedule.guestCount = guestCount;
+      this.orderDraft.catering.guestCount = guestCount;
+    }
+    if (details.budget !== undefined) {
+      const budget = Number(details.budget);
+      this.orderDraft.schedule.budget = Number.isFinite(budget) ? budget : null;
+      this.orderDraft.catering.budget = Number.isFinite(budget) ? budget : null;
+    }
+
+    if (this.orderDraft.orderType === 'pickup') {
+      this.orderDraft.fulfillment = 'pickup';
+    } else if (this.orderDraft.orderType === 'delivery') {
+      this.orderDraft.fulfillment = 'delivery';
+    } else if (this.orderDraft.orderType === 'dine_in') {
+      this.orderDraft.fulfillment = 'dine_in';
+    }
+
+    this.calculateCartPricing();
+    return {
+      ok: true,
+      orderType: this.orderDraft.orderType,
+      fulfillment: this.orderDraft.fulfillment,
+      customer: this.orderDraft.customer,
+      schedule: this.orderDraft.schedule,
+      catering: this.orderDraft.catering,
+      pricing: this.orderDraft.pricing,
+    };
+  }
+
+  applyCartAction(action, payload = {}) {
+    const normalizedAction = String(action || '').toLowerCase();
+    const quantity = Math.max(1, parseInt(payload.quantity, 10) || 1);
+
+    if (normalizedAction === 'clear') {
+      this.orderDraft.items = [];
+      this.calculateCartPricing();
+      return { ok: true, message: 'Cart cleared.', cart: this.orderDraft.items, pricing: this.orderDraft.pricing };
+    }
+
+    if (normalizedAction === 'replace' && payload.query) {
+      this.orderDraft.items = [];
+    }
+
+    if (normalizedAction === 'remove') {
+      const removeToken = String(payload.itemId || payload.query || payload.itemName || '').toLowerCase();
+      this.orderDraft.items = this.orderDraft.items.filter((item) => {
+        const match = [
+          item.id,
+          item.name,
+        ]
+          .map((value) => String(value || '').toLowerCase())
+          .some((value) => value && removeToken && value.includes(removeToken));
+        return !match;
+      });
+      this.calculateCartPricing();
+      return { ok: true, message: 'Item removed.', cart: this.orderDraft.items, pricing: this.orderDraft.pricing };
+    }
+
+    const itemSpec = {
+      query: payload.query || payload.itemName || '',
+      category: payload.category || '',
+      size: payload.size || '',
+      quantity,
+      modifiers: normalizeTextList(payload.modifiers),
+      specialInstructions: String(payload.specialInstructions || '').trim(),
+    };
+
+    const resolved = this.resolveMenuItem(itemSpec.query, itemSpec.category, itemSpec.size);
+    if (!resolved) {
+      return { ok: false, message: `Could not match menu item: ${itemSpec.query}` };
+    }
+
+    if (!resolved.isAvailable) {
+      return {
+        ok: false,
+        unavailable: true,
+        message: `${resolved.name} is currently unavailable.`,
+        alternatives: this.searchMenuItems(resolved.category || itemSpec.category || itemSpec.query, resolved.category || itemSpec.category || '', 5).filter((entry) => entry.name !== resolved.name),
+      };
+    }
+
+    const existing = normalizedAction === 'update'
+      ? this.orderDraft.items.find((item) => item.id === payload.itemId)
+      : this.orderDraft.items.find((item) =>
+          item.name === resolved.name &&
+          item.size === itemSpec.size &&
+          JSON.stringify(item.modifiers || []) === JSON.stringify(itemSpec.modifiers || []) &&
+          String(item.specialInstructions || '') === String(itemSpec.specialInstructions || '')
+        );
+
+    const line = {
+      id: existing?.id || payload.itemId || randomUUID(),
+      menuEntry: resolved,
+      name: resolved.name,
+      category: resolved.category,
+      size: itemSpec.size || '',
+      quantity: existing ? (normalizedAction === 'update' ? quantity : Math.max(1, (existing.quantity || 1) + quantity)) : quantity,
+      unitPrice: resolved.unitPrice,
+      modifiers: itemSpec.modifiers,
+      specialInstructions: itemSpec.specialInstructions,
+      isAvailable: resolved.isAvailable,
+    };
+
+    if (normalizedAction === 'update' && existing) {
+      existing.quantity = Math.max(1, quantity);
+      existing.size = line.size;
+      existing.modifiers = line.modifiers;
+      existing.specialInstructions = line.specialInstructions;
+      existing.unitPrice = line.unitPrice;
+      existing.menuEntry = resolved;
+    } else {
+      this.orderDraft.items.push(line);
+    }
+
+    this.calculateCartPricing();
+    return {
+      ok: true,
+      message: `${resolved.name} added to the cart.`,
+      item: line,
+      cart: this.orderDraft.items,
+      pricing: this.orderDraft.pricing,
+    };
+  }
+
+  lookupRecentOrder(limit = 5) {
+    const recentItems = Array.isArray(this.context?.callerHistory?.recentItems) ? this.context.callerHistory.recentItems : [];
+    const orderItems = recentItems.filter((item) => String(item.source || '').toLowerCase() === 'order').slice(0, Math.max(1, Math.min(10, Number(limit || 5))));
+    return {
+      ok: true,
+      recentOrders: orderItems,
+      callerHistory: this.context?.callerHistory || {},
+    };
+  }
+
+  reviewCurrentOrder() {
+    const pricing = this.calculateCartPricing();
+    const summary = this.cartSummaryText();
+    this.orderDraft.reviewConfirmed = true;
+    this.orderDraft.lastReviewSummary = summary;
+    return {
+      ok: true,
+      summary,
+      cart: this.orderDraft.items,
+      pricing,
+      orderType: this.orderDraft.orderType,
+      fulfillment: this.orderDraft.fulfillment,
+      customer: this.orderDraft.customer,
+      schedule: this.orderDraft.schedule,
+      catering: this.orderDraft.catering,
+    };
+  }
+
+  buildOrderPayload() {
+    const pricing = this.calculateCartPricing();
+    const orderType = normalizeOrderType(this.orderDraft.orderType);
+    const summary = this.cartSummaryText();
+    const orderNotes = this.orderDraft.notes || '';
+    const scheduledFor = this.orderDraft.schedule.scheduledFor || this.orderDraft.catering.date || '';
+    return {
+      orderType,
+      fulfillment: this.orderDraft.fulfillment || orderType,
+      customer: this.orderDraft.customer,
+      delivery: this.orderDraft.delivery,
+      pickup: this.orderDraft.pickup,
+      schedule: this.orderDraft.schedule,
+      catering: this.orderDraft.catering,
+      items: this.orderDraft.items.map((item) => ({
+        id: item.id,
+        name: item.name,
+        category: item.category,
+        quantity: item.quantity,
+        size: item.size,
+        modifiers: item.modifiers,
+        specialInstructions: item.specialInstructions,
+        unitPrice: item.unitPrice,
+        lineSubtotal: item.lineSubtotal,
+        isAvailable: item.isAvailable,
+      })),
+      notes: orderNotes,
+      pricing,
+      reviewConfirmed: this.orderDraft.reviewConfirmed,
+      summary,
+      meta: {
+        scheduledFor,
+        orderMode: orderType,
+        calledFrom: this.from,
+        callSid: this.callSid,
+        restaurantId: this.restaurantId,
+      },
+    };
+  }
+
+  async sendCustomerSmsConfirmation(orderResult) {
+    const settings = this.getOrderSettings();
+    if (settings.orderSmsEnabled === false) {
+      return { status: 'skipped', error: '' };
+    }
+
+    const customerPhone = normalizePhone(this.orderDraft.customer.phone || this.from);
+    const from = config.twilioFromPhone;
+    if (!config.twilioAccountSid || !config.twilioAuthToken || !from || !customerPhone) {
+      return { status: 'skipped', error: 'Missing SMS credentials or customer phone.' };
+    }
+
+    const total = this.orderDraft.pricing?.total ?? orderResult?.orderTotal ?? 0;
+    const currency = this.orderDraft.pricing?.currency || settings.orderCurrency || config.defaultCurrency;
+    const orderNumber = orderResult?.orderId || orderResult?.orderNumber || '';
+    const readyText = this.orderDraft.orderType === 'delivery'
+      ? 'Delivery estimate will be confirmed by the restaurant.'
+      : 'Prep time will be confirmed by the kitchen.';
+
+    const body = [
+      `Your Xorvian order${orderNumber ? ` #${orderNumber}` : ''} has been received.`,
+      `Total: ${currency} ${Number(total || 0).toFixed(2)}`,
+      readyText,
+    ].join(' ');
+
+    try {
+      const response = await fetch(
+        `https://api.twilio.com/2010-04-01/Accounts/${encodeURIComponent(config.twilioAccountSid)}/Messages.json`,
+        {
+          method: 'POST',
+          headers: {
+            Authorization: `Basic ${Buffer.from(`${config.twilioAccountSid}:${config.twilioAuthToken}`).toString('base64')}`,
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+          body: new URLSearchParams({
+            From: from,
+            To: customerPhone,
+            Body: body,
+          }),
+        }
+      );
+
+      const text = await response.text();
+      if (!response.ok) {
+        return { status: 'failed', error: truncate(text || `SMS failed: ${response.status}`, 1000) };
+      }
+
+      return { status: 'sent', error: '' };
+    } catch (error) {
+      return { status: 'failed', error: truncate(error.message, 1000) };
+    }
+  }
+
+  async finalizeOrder() {
+    if (this.orderDraft.reviewConfirmed !== true) {
+      return { ok: false, message: 'Please review the cart before placing the order.' };
+    }
+
+    if (!this.orderDraft.items.length) {
+      return { ok: false, message: 'The cart is empty.' };
+    }
+
+    const orderPayload = this.buildOrderPayload();
+    const orderData = {
+      type: orderPayload.orderType,
+      fulfillment: orderPayload.fulfillment,
+      customer: orderPayload.customer,
+      delivery: orderPayload.delivery,
+      pickup: orderPayload.pickup,
+      schedule: orderPayload.schedule,
+      catering: orderPayload.catering,
+      items: orderPayload.items,
+      pricing: orderPayload.pricing,
+      notes: orderPayload.notes,
+      reviewConfirmed: orderPayload.reviewConfirmed,
+      summary: orderPayload.summary,
+      order: orderPayload.items.map((item) => `${item.quantity} x ${item.name}${item.size ? ` (${item.size})` : ''}`).join(', '),
+      name: orderPayload.customer.name,
+      phone: orderPayload.customer.phone,
+      address: orderPayload.delivery.address || orderPayload.customer.address,
+      apartmentNumber: orderPayload.delivery.apartmentNumber || orderPayload.customer.apartmentNumber,
+      deliveryInstructions: orderPayload.delivery.instructions || orderPayload.customer.instructions,
+      scheduledFor: orderPayload.schedule.scheduledFor || orderPayload.catering.date || '',
+      eventType: orderPayload.catering.eventType || orderPayload.schedule.eventType || '',
+      guestCount: orderPayload.catering.guestCount || orderPayload.schedule.guestCount || 0,
+      budget: orderPayload.catering.budget || orderPayload.schedule.budget || null,
+      subtotal: orderPayload.pricing.subtotal,
+      taxAmount: orderPayload.pricing.tax,
+      deliveryFee: orderPayload.pricing.deliveryFee,
+      discountAmount: orderPayload.pricing.discount,
+      total: orderPayload.pricing.total,
+      currency: orderPayload.pricing.currency,
+      notes: orderPayload.notes,
+      specialNotes: orderPayload.notes,
+    };
+
+    const saved = await saveOrder({
+      restaurantId: this.restaurantId,
+      callSid: this.callSid,
+      from: this.from,
+      orderData,
+    });
+
+    const sms = await this.sendCustomerSmsConfirmation(saved);
+    const estimatedReadyMinutes = this.orderDraft.orderType === 'delivery'
+      ? Number(this.getOrderSettings().deliveryLeadMinutes || 45)
+      : Number(this.getOrderSettings().pickupLeadMinutes || 20);
+    const estimatedReadyText = this.orderDraft.orderType === 'delivery'
+      ? `Delivery estimate around ${estimatedReadyMinutes} minutes.`
+      : `Ready in about ${estimatedReadyMinutes} minutes.`;
+
+    this.currentIntent = 'order';
+    this.orderCompleted = true;
+    this.finalStatus = 'completed';
+    this.callSummary = `Order #${saved.orderId || ''} saved for ${this.orderDraft.customer.name || 'caller'}.`;
+    this.orderDraft = this.createEmptyOrderDraft();
+
+    return {
+      ok: true,
+      orderId: saved.orderId,
+      duplicateOfOrderId: saved.duplicateOfOrderId || null,
+      isDuplicate: Boolean(saved.isDuplicate),
+      smsStatus: sms.status,
+      message: `Your order has been placed. ${estimatedReadyText}`,
+      orderSummary: orderPayload.summary,
+      estimatedReadyMinutes,
+    };
   }
 
   summarizeTranscript() {
@@ -293,6 +923,7 @@ export class CallSession {
     this.restaurantId = this.context.restaurantId || this.restaurantId;
 
     const settings = this.context.settings || {};
+    this.orderDraft = this.createEmptyOrderDraft();
     const instructions = buildAgentInstructions({
       ...this.context,
       call: {
@@ -472,24 +1103,90 @@ export class CallSession {
     logger.info('Agent function call', { callSid: this.callSid, name, restaurantId: this.restaurantId });
     this.markCallerActivity();
 
+    if (name === 'search_menu') {
+      return {
+        ok: true,
+        results: this.searchMenuItems(args.query || '', args.category || '', args.limit || 8),
+      };
+    }
+
+    if (name === 'set_order_details') {
+      this.currentIntent = 'order';
+      return this.applyOrderDetails(args);
+    }
+
+    if (name === 'order_cart_action') {
+      this.currentIntent = 'order';
+      return this.applyCartAction(args.action, args);
+    }
+
+    if (name === 'review_order') {
+      this.currentIntent = 'order';
+      return this.reviewCurrentOrder();
+    }
+
+    if (name === 'place_order') {
+      if (!args.confirmed) {
+        return { ok: false, message: 'Order was not confirmed.' };
+      }
+      return this.finalizeOrder();
+    }
+
+    if (name === 'lookup_recent_order') {
+      return this.lookupRecentOrder(args.limit || 5);
+    }
+
     if (name === 'create_order') {
       this.currentIntent = 'order';
-      const orderData = {
-        name: args.name || '',
-        phone: normalizePhone(args.phone || this.from),
-        address: args.address || '',
-        order: args.order || '',
-        fulfillment: args.fulfillment || 'unknown',
-        notes: args.notes || '',
-      };
-      const result = await saveOrder({
-        restaurantId: this.restaurantId,
-        callSid: this.callSid,
-        from: this.from,
-        orderData,
+      this.applyOrderDetails({
+        orderType: args.orderType || args.fulfillment || this.orderDraft.orderType,
+        fulfillment: args.fulfillment || this.orderDraft.fulfillment,
+        customerName: args.name || this.orderDraft.customer.name,
+        customerPhone: args.phone || this.orderDraft.customer.phone,
+        address: args.address || this.orderDraft.customer.address,
+        apartmentNumber: args.apartmentNumber || this.orderDraft.customer.apartmentNumber,
+        instructions: args.instructions || args.notes || this.orderDraft.customer.instructions,
+        scheduledFor: args.scheduledFor || this.orderDraft.schedule.scheduledFor,
+        eventType: args.eventType || this.orderDraft.catering.eventType,
+        guestCount: args.guestCount || this.orderDraft.schedule.guestCount,
+        budget: args.budget || this.orderDraft.schedule.budget,
       });
-      this.callSummary = `Order saved for ${orderData.name || 'caller'} (${orderData.fulfillment}).`;
-      return result;
+
+      if (args.order && this.orderDraft.items.length === 0) {
+        const added = this.applyCartAction('add', {
+          query: args.order,
+          quantity: 1,
+          specialInstructions: args.notes || '',
+        });
+        if (!added.ok) {
+          this.orderDraft.items.push({
+            id: randomUUID(),
+            menuEntry: {
+              name: String(args.order || 'Order item').trim(),
+              category: '',
+              isAvailable: true,
+              price: null,
+              sizes: null,
+              modifierPrices: null,
+            },
+            name: String(args.order || 'Order item').trim(),
+            category: '',
+            size: '',
+            quantity: 1,
+            unitPrice: null,
+            modifiers: [],
+            specialInstructions: String(args.notes || '').trim(),
+            isAvailable: true,
+          });
+          this.calculateCartPricing();
+        }
+      }
+
+      if (args.reviewConfirmed !== false) {
+        this.orderDraft.reviewConfirmed = true;
+      }
+
+      return this.finalizeOrder();
     }
 
     if (name === 'create_reservation') {

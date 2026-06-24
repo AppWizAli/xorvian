@@ -190,7 +190,26 @@ function ensure_customer_records(int $userId): void
         )'
     )->execute([
         ':user_id' => $userId,
-        ':order_fields_json' => json_encode(['Timestamp', 'Restaurant ID', 'Name', 'Phone', 'Address', 'Order', 'Caller ID', 'Call SID']),
+        ':order_fields_json' => json_encode([
+            'Timestamp',
+            'Restaurant ID',
+            'Order Type',
+            'Customer Name',
+            'Phone',
+            'Address',
+            'Apartment',
+            'Instructions',
+            'Scheduled For',
+            'Items',
+            'Modifiers',
+            'Subtotal',
+            'Tax',
+            'Delivery Fee',
+            'Discount',
+            'Total',
+            'Caller ID',
+            'Call SID',
+        ]),
         ':reservation_fields_json' => json_encode(['Timestamp', 'Restaurant ID', 'Name', 'Phone', 'Date', 'Time', 'Guests', 'Caller ID', 'Call SID']),
     ]);
 }
@@ -214,7 +233,7 @@ function format_menu_for_user(int $userId): array
     $categories = $categoryStmt->fetchAll();
 
     $itemStmt = db()->prepare(
-        'SELECT * FROM menu_items WHERE user_id = :user_id AND is_available = 1 ORDER BY sort_order, id'
+        'SELECT * FROM menu_items WHERE user_id = :user_id ORDER BY sort_order, id'
     );
     $itemStmt->execute([':user_id' => $userId]);
     $items = $itemStmt->fetchAll();
@@ -228,6 +247,7 @@ function format_menu_for_user(int $userId): array
 
             $formatted = [
                 'name' => $item['name'],
+                'isAvailable' => (int)($item['is_available'] ?? 1) === 1,
             ];
 
             if ($item['price'] !== null) {
@@ -247,6 +267,25 @@ function format_menu_for_user(int $userId): array
 
             if ($item['modifiers']) {
                 $formatted['modifiers'] = $item['modifiers'];
+            }
+
+            if (!empty($item['search_keywords'])) {
+                $formatted['searchKeywords'] = $item['search_keywords'];
+            }
+
+            if (!empty($item['allergen_notes'])) {
+                $formatted['allergenNotes'] = $item['allergen_notes'];
+            }
+
+            if (!empty($item['is_featured'])) {
+                $formatted['isFeatured'] = (int)$item['is_featured'] === 1;
+            }
+
+            if (!empty($item['modifier_prices_json'])) {
+                $modifierPrices = json_decode((string)$item['modifier_prices_json'], true);
+                if (is_array($modifierPrices)) {
+                    $formatted['modifierPrices'] = $modifierPrices;
+                }
             }
 
             $categoryItems[] = $formatted;

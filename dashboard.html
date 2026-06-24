@@ -368,6 +368,72 @@
           </div>
 
           <div class="form-row">
+            <label class="toggle-row">
+              <input type="checkbox" name="orderReviewRequired" checked>
+              <span>Require order review before save</span>
+            </label>
+            <label class="toggle-row">
+              <input type="checkbox" name="orderSmsEnabled" checked>
+              <span>Send SMS order confirmations</span>
+            </label>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="order-tax-rate">Order Tax Rate</label>
+              <input class="form-input" id="order-tax-rate" name="orderTaxRate" type="number" step="0.0001" min="0" max="1" placeholder="0.00">
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="delivery-fee">Delivery Fee</label>
+              <input class="form-input" id="delivery-fee" name="deliveryFee" type="number" step="0.01" min="0" placeholder="0.00">
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="pickup-lead-minutes">Pickup Lead Minutes</label>
+              <input class="form-input" id="pickup-lead-minutes" name="pickupLeadMinutes" type="number" min="0" placeholder="20">
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="delivery-lead-minutes">Delivery Lead Minutes</label>
+              <input class="form-input" id="delivery-lead-minutes" name="deliveryLeadMinutes" type="number" min="0" placeholder="45">
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="catering-threshold-people">Catering Threshold People</label>
+              <input class="form-input" id="catering-threshold-people" name="cateringThresholdPeople" type="number" min="1" placeholder="25">
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="minimum-order-amount">Minimum Order Amount</label>
+              <input class="form-input" id="minimum-order-amount" name="minimumOrderAmount" type="number" step="0.01" min="0" placeholder="0.00">
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="order-currency">Order Currency</label>
+              <input class="form-input" id="order-currency" name="orderCurrency" type="text" placeholder="CAD">
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="order-pos-provider">Kitchen / POS Provider</label>
+              <input class="form-input" id="order-pos-provider" name="orderPosProvider" type="text" placeholder="dashboard, toast, square, clover">
+            </div>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label" for="order-pos-endpoint">Kitchen / POS Endpoint</label>
+              <input class="form-input" id="order-pos-endpoint" name="orderPosEndpoint" type="text" placeholder="Webhook or email endpoint">
+            </div>
+            <div class="form-group">
+              <label class="form-label" for="order-kitchen-channel">Kitchen Routing Channel</label>
+              <input class="form-input" id="order-kitchen-channel" name="orderKitchenChannel" type="text" placeholder="dashboard, email, sms">
+            </div>
+          </div>
+
+          <div class="form-row">
             <div class="form-group">
               <label class="form-label" for="notification-phone">Notification Phone</label>
               <input class="form-input" id="notification-phone" name="notificationPhone" type="text" placeholder="+44...">
