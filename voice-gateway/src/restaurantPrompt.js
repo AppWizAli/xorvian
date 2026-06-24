@@ -41,6 +41,23 @@ function repeatCallerGreeting(restaurant, settings, callerHistory) {
   return template.includes('{{name}}') ? template.replaceAll('{{name}}', name) : `${template} ${name}`.trim();
 }
 
+function normalizeAssistantResponseStyle(value) {
+  const style = String(value || 'balanced').toLowerCase();
+  return ['concise', 'balanced', 'detailed'].includes(style) ? style : 'balanced';
+}
+
+function assistantResponseStyleInstruction(style) {
+  if (style === 'concise') {
+    return 'Reply in one short sentence whenever possible. Stay warm, but do not ramble.';
+  }
+
+  if (style === 'detailed') {
+    return 'Reply in 2 to 4 complete sentences when needed. Be clear, natural, and not robotic.';
+  }
+
+  return 'Reply in 1 to 2 complete sentences. Stay natural, helpful, and not overly brief.';
+}
+
 export function buildAgentInstructions(context) {
   const restaurant = context.restaurant || {};
   const settings = context.settings || {};
@@ -62,6 +79,14 @@ export function buildAgentInstructions(context) {
   const deliveryLeadMinutes = Math.max(0, Number(settings.deliveryLeadMinutes || 45));
   const cateringThresholdPeople = Math.max(0, Number(settings.cateringThresholdPeople || 25));
   const orderCurrency = settings.orderCurrency || config.defaultCurrency;
+  const assistantResponseStyle = normalizeAssistantResponseStyle(settings.assistantResponseStyle || restaurant.assistantResponseStyle || 'balanced');
+  const assistantMinResponseChars = Math.max(20, Number(settings.assistantMinResponseChars || restaurant.assistantMinResponseChars || 60));
+  const assistantBufferChars = Math.max(assistantMinResponseChars + 10, Number(settings.assistantBufferChars || restaurant.assistantBufferChars || 120));
+  const assistantFlushDelayMs = Math.max(100, Number(settings.assistantFlushDelayMs || restaurant.assistantFlushDelayMs || 300));
+  const elevenLabsStreamingLatency = Math.min(
+    4,
+    Math.max(0, Number(settings.elevenLabsStreamingLatency ?? restaurant.elevenLabsStreamingLatency ?? 3))
+  );
 
   return [
     `You are the live phone employee for ${restaurant.name || 'this restaurant'} in Canada.`,
@@ -73,7 +98,7 @@ export function buildAgentInstructions(context) {
     '',
     'Conversation style:',
     '- Start warm and direct if the caller has not spoken yet.',
-    '- Keep each turn short: usually one sentence, two only when useful.',
+    `- Reply style: ${assistantResponseStyleInstruction(assistantResponseStyle)}`,
     '- Ask one question at a time.',
     '- Confirm names, phone numbers, dates, times, and addresses before finalizing.',
     `- Caller ID available: ${call.from || 'unknown'}. Prefer this as the customer phone only after the caller agrees.`,
@@ -102,6 +127,9 @@ export function buildAgentInstructions(context) {
     `Pickup lead minutes: ${pickupLeadMinutes}`,
     `Delivery lead minutes: ${deliveryLeadMinutes}`,
     `Catering threshold people: ${cateringThresholdPeople}`,
+    `Assistant speech buffer chars: ${assistantBufferChars}`,
+    `Assistant speech flush delay: ${assistantFlushDelayMs} ms`,
+    `ElevenLabs latency mode: ${elevenLabsStreamingLatency}`,
     closure ? `Current closure message: ${closure}` : '',
     repeatCaller ? `Repeat caller greeting: ${repeatCaller}` : '',
     '',
@@ -132,6 +160,7 @@ export function buildAgentInstructions(context) {
     '- Before placing the order, read back the full cart, price, and fulfillment details and ask for explicit confirmation.',
     `- If order review is required, call the review tool before placing the order.`,
     '- Do not place the order until the customer has confirmed the final review.',
+    '- Never answer with fragments, isolated words, or cut-off phrases. Always finish the thought before yielding the turn.',
     '',
     'Manager handoff rules:',
     '- Prefer manager callback requests over live transfer unless the situation is critical.',

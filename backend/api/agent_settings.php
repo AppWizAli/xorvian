@@ -24,12 +24,27 @@ require_method('POST');
 
 $data = read_json_body();
 
+$assistantResponseStyle = clean_string($data, 'assistantResponseStyle', 20);
+if (!in_array($assistantResponseStyle, ['concise', 'balanced', 'detailed'], true)) {
+    $assistantResponseStyle = 'balanced';
+}
+
+$assistantMinResponseChars = max(20, (int)($data['assistantMinResponseChars'] ?? 60));
+$assistantBufferChars = max($assistantMinResponseChars + 10, (int)($data['assistantBufferChars'] ?? 120));
+$assistantFlushDelayMs = max(100, (int)($data['assistantFlushDelayMs'] ?? 300));
+$elevenLabsStreamingLatency = min(4, max(0, (int)($data['elevenLabsStreamingLatency'] ?? 3)));
+
 $agentFields = [
     ':agent_name' => clean_string($data, 'agentName', 120),
     ':language_code' => clean_string($data, 'languageCode', 20) ?: 'en-CA',
     ':voice_provider' => clean_string($data, 'voiceProvider', 80) ?: 'elevenlabs',
     ':voice_id' => clean_string($data, 'voiceId', 120),
     ':voice_model' => clean_string($data, 'voiceModel', 120) ?: 'eleven_flash_v2_5',
+    ':assistant_response_style' => $assistantResponseStyle,
+    ':assistant_min_response_chars' => $assistantMinResponseChars,
+    ':assistant_buffer_chars' => $assistantBufferChars,
+    ':assistant_flush_delay_ms' => $assistantFlushDelayMs,
+    ':elevenlabs_streaming_latency' => $elevenLabsStreamingLatency,
     ':twilio_phone' => clean_string($data, 'twilioPhone', 40),
     ':n8n_webhook_url' => clean_string($data, 'n8nWebhookUrl', 255),
     ':escalation_phone' => clean_string($data, 'escalationPhone', 40),
@@ -77,6 +92,11 @@ db()->prepare(
         voice_provider = :voice_provider,
         voice_id = :voice_id,
         voice_model = :voice_model,
+        assistant_response_style = :assistant_response_style,
+        assistant_min_response_chars = :assistant_min_response_chars,
+        assistant_buffer_chars = :assistant_buffer_chars,
+        assistant_flush_delay_ms = :assistant_flush_delay_ms,
+        elevenlabs_streaming_latency = :elevenlabs_streaming_latency,
         twilio_phone = :twilio_phone,
         n8n_webhook_url = :n8n_webhook_url,
         escalation_phone = :escalation_phone,

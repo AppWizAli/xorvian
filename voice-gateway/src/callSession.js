@@ -195,7 +195,7 @@ export class CallSession {
     }
   }
 
-  scheduleTextFlush() {
+  scheduleTextFlush(delayMs = this.getAssistantFlushDelayMs()) {
     this.clearTextFlushTimer();
 
     this.textFlushHandle = setTimeout(() => {
@@ -203,7 +203,7 @@ export class CallSession {
       if (this.closed) return;
       if (!this.textBuffer.trim()) return;
       void this.flushModelText();
-    }, 140);
+    }, Math.max(100, Number(delayMs) || 300));
   }
 
   scheduleSilenceTimers() {
@@ -247,6 +247,29 @@ export class CallSession {
 
   getOrderSettings() {
     return this.context?.settings || {};
+  }
+
+  getAssistantResponseStyle() {
+    const style = String(this.getOrderSettings().assistantResponseStyle || 'balanced').toLowerCase();
+    return ['concise', 'balanced', 'detailed'].includes(style) ? style : 'balanced';
+  }
+
+  getAssistantMinResponseChars() {
+    const settings = this.getOrderSettings();
+    const style = this.getAssistantResponseStyle();
+    const fallback = style === 'concise' ? 40 : style === 'detailed' ? 90 : 60;
+    return Math.max(20, Number(settings.assistantMinResponseChars || fallback));
+  }
+
+  getAssistantBufferChars() {
+    const settings = this.getOrderSettings();
+    const minChars = this.getAssistantMinResponseChars();
+    return Math.max(minChars + 10, Number(settings.assistantBufferChars || (minChars + 60)));
+  }
+
+  getAssistantFlushDelayMs() {
+    const settings = this.getOrderSettings();
+    return Math.max(100, Number(settings.assistantFlushDelayMs || 300));
   }
 
   getMenuEntries() {
@@ -944,6 +967,8 @@ export class CallSession {
     this.tts = new ElevenLabsStream({
       voiceId: settings.voiceId || config.elevenLabsDefaultVoiceId,
       modelId: settings.voiceModel || config.elevenLabsDefaultModel,
+      outputFormat: settings.outputFormat || config.elevenLabsOutputFormat,
+      optimizeStreamingLatency: settings.elevenLabsStreamingLatency ?? config.elevenLabsOptimizeStreamingLatency,
       callSid: this.callSid,
       onAudio: (payload) => this.sendAudio(payload),
     });
@@ -1064,6 +1089,8 @@ export class CallSession {
     this.tts = new ElevenLabsStream({
       voiceId: settings.voiceId || config.elevenLabsDefaultVoiceId,
       modelId: settings.voiceModel || config.elevenLabsDefaultModel,
+      outputFormat: settings.outputFormat || config.elevenLabsOutputFormat,
+      optimizeStreamingLatency: settings.elevenLabsStreamingLatency ?? config.elevenLabsOptimizeStreamingLatency,
       callSid: this.callSid,
       onAudio: (payload) => this.sendAudio(payload),
     });
@@ -1079,15 +1106,21 @@ export class CallSession {
     this.textBuffer += delta;
     const cleanLength = this.textBuffer.trim().length;
     const sentenceReady = /[.!?]\s*$/.test(this.textBuffer) || /[.!?]\s/.test(this.textBuffer);
-    const longEnough = cleanLength >= 40;
+    const longEnough = cleanLength >= this.getAssistantBufferChars();
+    const sentenceReadyForFlush = sentenceReady && cleanLength >= this.getAssistantMinResponseChars();
 
-    if (sentenceReady || longEnough) {
+    if (sentenceReadyForFlush) {
       void this.flushModelText({ immediate: true });
       return;
     }
 
+    if (longEnough) {
+      this.scheduleTextFlush(this.getAssistantFlushDelayMs());
+      return;
+    }
+
     if (cleanLength >= 12) {
-      this.scheduleTextFlush();
+      this.scheduleTextFlush(this.getAssistantFlushDelayMs());
     }
   }
 

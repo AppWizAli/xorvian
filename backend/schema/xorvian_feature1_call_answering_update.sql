@@ -8,5 +8,9 @@ ALTER TABLE agent_settings
   ADD COLUMN IF NOT EXISTS repeat_caller_greeting VARCHAR(255) NOT NULL DEFAULT 'Welcome back, {{name}}. How can I help you today?',
   ADD COLUMN IF NOT EXISTS silence_prompt_seconds INT UNSIGNED NOT NULL DEFAULT 10,
   ADD COLUMN IF NOT EXISTS silence_hangup_seconds INT UNSIGNED NOT NULL DEFAULT 20,
-  ADD COLUMN IF NOT EXISTS backup_openai_model VARCHAR(120) NOT NULL DEFAULT '';
-
+  ADD COLUMN IF NOT EXISTS backup_openai_model VARCHAR(120) NOT NULL DEFAULT '',
+  ADD COLUMN IF NOT EXISTS assistant_response_style VARCHAR(20) NOT NULL DEFAULT 'balanced',
+  ADD COLUMN IF NOT EXISTS assistant_min_response_chars INT UNSIGNED NOT NULL DEFAULT 60,
+  ADD COLUMN IF NOT EXISTS assistant_buffer_chars INT UNSIGNED NOT NULL DEFAULT 120,
+  ADD COLUMN IF NOT EXISTS assistant_flush_delay_ms INT UNSIGNED NOT NULL DEFAULT 300,
+  ADD COLUMN IF NOT EXISTS elevenlabs_streaming_latency TINYINT UNSIGNED NOT NULL DEFAULT 3;
