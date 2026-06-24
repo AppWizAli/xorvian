@@ -1378,6 +1378,25 @@ document.addEventListener('DOMContentLoaded', () => {
       `;
     }
 
+    function renderTranscriptDetails(transcript, emptyLabel = 'Transcript not available yet.') {
+      const text = String(transcript || '').trim();
+      if (!text) {
+        return `
+          <details class="call-transcript-details">
+            <summary>View transcript</summary>
+            <div class="call-transcript-empty">${escapeHtml(emptyLabel)}</div>
+          </details>
+        `;
+      }
+
+      return `
+        <details class="call-transcript-details">
+          <summary>View transcript</summary>
+          <pre class="call-transcript">${escapeHtml(text)}</pre>
+        </details>
+      `;
+    }
+
     function renderCustomerDetailPanel(customer) {
       if (!customerDetailPanel) return;
 
@@ -1588,7 +1607,7 @@ document.addEventListener('DOMContentLoaded', () => {
       if (!callsTableBody) return;
 
       if (!calls.length) {
-        setTableMessage(callsTableBody, 5, 'No call logs yet for this customer account.');
+        setTableMessage(callsTableBody, 6, 'No call logs yet for this customer account.');
         return;
       }
 
@@ -1599,6 +1618,7 @@ document.addEventListener('DOMContentLoaded', () => {
           <td data-label="Status">${renderStatus(call.call_status)}</td>
           <td data-label="Duration">${escapeHtml(formatDuration(call.duration_seconds))}</td>
           <td data-label="Summary" class="table-main-cell">${escapeHtml(call.ai_summary || call.call_sid || '-')}</td>
+          <td data-label="Transcript" class="table-main-cell">${renderTranscriptDetails(call.transcript)}</td>
         </tr>
       `).join('');
     }
@@ -2455,7 +2475,7 @@ Fries
     function renderAdminCalls(calls) {
       if (!adminCallsTable) return;
       if (!calls.length) {
-        setAdminTableMessage(adminCallsTable, 7, 'No calls logged yet.');
+        setAdminTableMessage(adminCallsTable, 8, 'No calls logged yet.');
         return;
       }
       adminCallsTable.innerHTML = calls.map(call => `
@@ -2466,6 +2486,7 @@ Fries
           <td>${escapeHtml(adminPretty(call.call_type || 'unknown'))}</td>
           <td>${adminStatus(call.call_status || 'answered')}</td>
           <td class="table-main-cell">${escapeHtml(call.ai_summary || call.call_sid || '-')}</td>
+          <td class="table-main-cell">${renderTranscriptDetails(call.transcript, 'Transcript not available for this call.')}</td>
           <td>${escapeHtml(adminDate(call.created_at))}</td>
         </tr>
       `).join('');
