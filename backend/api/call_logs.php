@@ -17,6 +17,7 @@ $stmt = db()->prepare(
             call_logs.caller_phone,
             call_logs.call_type,
             call_logs.call_status,
+            call_logs.transcript,
             call_logs.ai_summary,
             call_logs.duration_seconds,
             call_logs.created_at

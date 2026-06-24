@@ -836,7 +836,7 @@ export class CallSession {
         callType: this.currentIntent || 'unknown',
         callStatus: this.finalStatus || 'completed',
         summary: this.summarizeTranscript(),
-        transcript: this.transcript.map((entry) => `${entry.role}: ${entry.text}`).join('\n'),
+        transcript: this.transcript.map((entry) => `[${entry.time}] ${entry.role}: ${entry.text}`).join('\n'),
         durationSeconds: Math.max(0, Math.round((Date.now() - this.startedAt) / 1000)),
       });
     } catch (error) {
@@ -1106,8 +1106,8 @@ export class CallSession {
     this.textBuffer += delta;
     const cleanLength = this.textBuffer.trim().length;
     const sentenceReady = /[.!?]\s*$/.test(this.textBuffer) || /[.!?]\s/.test(this.textBuffer);
-    const longEnough = cleanLength >= this.getAssistantBufferChars();
     const sentenceReadyForFlush = sentenceReady && cleanLength >= this.getAssistantMinResponseChars();
+    const longEnough = cleanLength >= this.getAssistantBufferChars();
 
     if (sentenceReadyForFlush) {
       void this.flushModelText({ immediate: true });
@@ -1119,9 +1119,7 @@ export class CallSession {
       return;
     }
 
-    if (cleanLength >= 12) {
-      this.scheduleTextFlush(this.getAssistantFlushDelayMs());
-    }
+    this.clearTextFlushTimer();
   }
 
   flushModelText({ immediate = false } = {}) {
