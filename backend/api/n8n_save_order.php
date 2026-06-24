@@ -2,6 +2,7 @@
 declare(strict_types=1);
 
 require_once __DIR__ . '/bootstrap.php';
+require_once __DIR__ . '/square_orders.php';
 
 require_method('POST');
 
@@ -357,6 +358,98 @@ $orderId = (int)db()->lastInsertId();
 $callSid = substr((string)($data['callSid'] ?? ''), 0, 120);
 $callerPhone = substr((string)($data['from'] ?? $customerPhone ?? ''), 0, 40);
 
+$providerStmt = db()->prepare(
+    'SELECT order_pos_provider, pickup_lead_minutes, delivery_lead_minutes
+     FROM agent_settings
+     WHERE user_id = :user_id
+     LIMIT 1'
+);
+$providerStmt->execute([':user_id' => $userId]);
+$providerRow = $providerStmt->fetch() ?: [];
+
+$posStatus = 'pending';
+$posError = null;
+$squareResult = null;
+
+$posProvider = strtolower(trim((string)($data['posProvider'] ?? '')));
+if ($posProvider === '') {
+    $posProvider = strtolower(trim((string)($providerRow['order_pos_provider'] ?? 'dashboard')));
+}
+
+$providerContext = [
+    'pickupLeadMinutes' => (int)($providerRow['pickup_lead_minutes'] ?? 20),
+    'deliveryLeadMinutes' => (int)($providerRow['delivery_lead_minutes'] ?? 45),
+];
+
+if ($posProvider === 'square') {
+    try {
+        $squareResult = square_create_order($orderPayload, array_merge($providerContext, [
+            'orderId' => $orderId,
+            'restaurantId' => $userId,
+            'callSid' => $callSid,
+            'orderHash' => $duplicateHash,
+            'orderNote' => $summary,
+        ]));
+
+        if (!empty($squareResult['ok'])) {
+            $posStatus = 'sent';
+        } else {
+            $posStatus = $squareResult['status'] ?? 'skipped';
+            $posError = $squareResult['message'] ?? 'Square integration skipped.';
+        }
+    } catch (Throwable $squareError) {
+        $posStatus = 'failed';
+        $posError = substr($squareError->getMessage(), 0, 5000);
+    }
+
+    $orderPayloadForUpdate = $payloadForStorage;
+    $orderPayloadForUpdate['square'] = array_filter([
+        'status' => $posStatus,
+        'orderId' => $squareResult['squareOrderId'] ?? '',
+        'version' => $squareResult['squareOrderVersion'] ?? null,
+        'environment' => $squareResult['environment'] ?? null,
+        'locationId' => $squareResult['locationId'] ?? null,
+    ], static fn ($value) => $value !== null && $value !== '');
+    $updatedOrderPayloadJson = json_encode($orderPayloadForUpdate, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+
+    if ($updatedOrderPayloadJson !== false) {
+        db()->prepare(
+            'UPDATE orders
+             SET order_payload = :order_payload,
+                 pos_status = :pos_status,
+                 pos_error = :pos_error
+             WHERE id = :order_id'
+        )->execute([
+            ':order_payload' => $updatedOrderPayloadJson,
+            ':pos_status' => $posStatus,
+            ':pos_error' => $posError,
+            ':order_id' => $orderId,
+        ]);
+    } else {
+        db()->prepare(
+            'UPDATE orders
+             SET pos_status = :pos_status,
+                 pos_error = :pos_error
+             WHERE id = :order_id'
+        )->execute([
+            ':pos_status' => $posStatus,
+            ':pos_error' => $posError,
+            ':order_id' => $orderId,
+        ]);
+    }
+} else {
+    db()->prepare(
+        'UPDATE orders
+         SET pos_status = :pos_status,
+             pos_error = :pos_error
+         WHERE id = :order_id'
+    )->execute([
+        ':pos_status' => 'skipped',
+        ':pos_error' => $posProvider === 'dashboard' ? 'POS push is disabled. Saved to dashboard only.' : 'POS provider is not Square.',
+        ':order_id' => $orderId,
+    ]);
+}
+
 if ($callSid !== '' || $callerPhone !== '') {
     $updated = 0;
 
@@ -416,4 +509,7 @@ json_response([
     'orderId' => $orderId,
     'duplicateOfOrderId' => $duplicateOfOrderId,
     'isDuplicate' => $duplicateOfOrderId !== null,
+    'posStatus' => $posStatus,
+    'posError' => $posError,
+    'squareOrderId' => $squareResult['squareOrderId'] ?? '',
 ]);

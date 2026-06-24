@@ -768,7 +768,13 @@ export class CallSession {
     this.currentIntent = 'order';
     this.orderCompleted = true;
     this.finalStatus = 'completed';
-    this.callSummary = `Order #${saved.orderId || ''} saved for ${this.orderDraft.customer.name || 'caller'}.`;
+    const squareStatus = String(saved.posStatus || '').toLowerCase();
+    const squareSummary = squareStatus === 'sent'
+      ? 'Sent to Square POS.'
+      : squareStatus === 'failed'
+        ? 'Square push failed, but the order was saved locally.'
+        : '';
+    this.callSummary = `Order #${saved.orderId || ''} saved for ${this.orderDraft.customer.name || 'caller'}. ${squareSummary}`.trim();
     this.orderDraft = this.createEmptyOrderDraft();
 
     return {
@@ -777,7 +783,10 @@ export class CallSession {
       duplicateOfOrderId: saved.duplicateOfOrderId || null,
       isDuplicate: Boolean(saved.isDuplicate),
       smsStatus: sms.status,
-      message: `Your order has been placed. ${estimatedReadyText}`,
+      posStatus: saved.posStatus || 'pending',
+      posError: saved.posError || '',
+      squareOrderId: saved.squareOrderId || '',
+      message: `Your order has been placed. ${estimatedReadyText} ${squareSummary}`.trim(),
       orderSummary: orderPayload.summary,
       estimatedReadyMinutes,
     };

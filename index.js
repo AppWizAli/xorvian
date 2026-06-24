@@ -1447,24 +1447,41 @@ document.addEventListener('DOMContentLoaded', () => {
         return;
       }
 
-      ordersTableBody.innerHTML = orders.map(order => `
-        <tr>
-          <td data-label="Name">
-            <strong>${escapeHtml(order.customer_name || 'Guest')}</strong>
-            <small>${escapeHtml(order.source || 'voice_ai')}</small>
-          </td>
-          <td data-label="Phone">${escapeHtml(order.customer_phone || '-')}</td>
-          <td data-label="Order" class="table-main-cell">${escapeHtml(order.order_items || '-')}</td>
-          <td data-label="Details">
-            <small>Type: ${escapeHtml(order.order_type || 'pickup')}</small>
-            <small>Total: ${escapeHtml(renderMoney(order.order_total ?? order.total_amount))}</small>
-            <small>${escapeHtml(order.customer_address || order.delivery_instructions || order.special_notes || 'No notes')}</small>
-          </td>
-          <td data-label="Status">${renderStatus(order.order_status)}</td>
-          <td data-label="Time">${escapeHtml(formatDateTime(order.created_at))}</td>
-          <td data-label="Action">${renderStatusSelect('order', order.id, order.order_status || 'new')}</td>
-        </tr>
-      `).join('');
+      ordersTableBody.innerHTML = orders.map(order => {
+        let squareOrderId = '';
+        try {
+          const payload = typeof order.order_payload === 'string' ? JSON.parse(order.order_payload) : order.order_payload;
+          squareOrderId = payload?.square?.orderId || '';
+        } catch {
+          squareOrderId = '';
+        }
+
+        const detailLines = [
+          `Type: ${escapeHtml(order.order_type || 'pickup')}`,
+          `Total: ${escapeHtml(renderMoney(order.order_total ?? order.total_amount))}`,
+          order.pos_status ? `POS: ${escapeHtml(prettyStatus(order.pos_status))}` : '',
+          squareOrderId ? `Square ID: ${escapeHtml(squareOrderId)}` : '',
+          order.pos_error ? escapeHtml(compactText(order.pos_error)) : '',
+          escapeHtml(order.customer_address || order.delivery_instructions || order.special_notes || 'No notes'),
+        ].filter(Boolean);
+
+        return `
+          <tr>
+            <td data-label="Name">
+              <strong>${escapeHtml(order.customer_name || 'Guest')}</strong>
+              <small>${escapeHtml(order.source || 'voice_ai')}</small>
+            </td>
+            <td data-label="Phone">${escapeHtml(order.customer_phone || '-')}</td>
+            <td data-label="Order" class="table-main-cell">${escapeHtml(order.order_items || '-')}</td>
+            <td data-label="Details">
+              ${detailLines.map(line => `<small>${line}</small>`).join('')}
+            </td>
+            <td data-label="Status">${renderStatus(order.order_status)}</td>
+            <td data-label="Time">${escapeHtml(formatDateTime(order.created_at))}</td>
+            <td data-label="Action">${renderStatusSelect('order', order.id, order.order_status || 'new')}</td>
+          </tr>
+        `;
+      }).join('');
     }
 
     function renderCustomers(customers) {

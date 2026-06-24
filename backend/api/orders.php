@@ -96,7 +96,9 @@ $stmt = db()->prepare(
             orders.special_notes,
             orders.duplicate_hash,
             orders.pos_status,
+            orders.pos_error,
             orders.customer_sms_status,
+            orders.customer_sms_error,
             orders.source,
             orders.created_at,
             orders.updated_at
