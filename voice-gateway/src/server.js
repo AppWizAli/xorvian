@@ -78,6 +78,21 @@ async function handleIncomingCall(req, res) {
   send(res, 200, twiml, { 'Content-Type': 'text/xml; charset=utf-8' });
 }
 
+async function handleSquareWebhook(req, res) {
+  const body = await readBody(req);
+
+  logger.info('Square webhook received', {
+    contentType: req.headers['content-type'] || '',
+    squareEventType: req.headers['x-square-event-type'] || '',
+    squareSignaturePresent: Boolean(req.headers['x-square-hmacsha256-signature']),
+    bodyPreview: body.slice(0, 1000),
+  });
+
+  send(res, 200, JSON.stringify({ ok: true }), {
+    'Content-Type': 'application/json; charset=utf-8',
+  });
+}
+
 function handleHealth(req, res) {
   send(
     res,
@@ -112,6 +127,11 @@ const server = http.createServer(async (req, res) => {
 
     if (req.method === 'POST' && url.pathname === '/twilio/incoming') {
       await handleIncomingCall(req, res);
+      return;
+    }
+
+    if (req.method === 'POST' && url.pathname === '/square/webhook') {
+      await handleSquareWebhook(req, res);
       return;
     }
 
