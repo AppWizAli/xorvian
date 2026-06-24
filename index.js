@@ -946,6 +946,14 @@ document.addEventListener('DOMContentLoaded', () => {
         { label: 'Handoff Urgency', value: formValue(agentSettingsForm, 'notificationMinUrgency') },
         { label: 'Silence Prompt', value: `${formValue(agentSettingsForm, 'silencePromptSeconds')}s` },
         { label: 'Silence Hangup', value: `${formValue(agentSettingsForm, 'silenceHangupSeconds')}s` },
+        { label: 'Order Review Gate', value: checkedText(agentSettingsForm, 'orderReviewRequired') },
+        { label: 'Order SMS', value: checkedText(agentSettingsForm, 'orderSmsEnabled') },
+        { label: 'Tax / Delivery Fee', value: `${formValue(agentSettingsForm, 'orderTaxRate')} / ${formValue(agentSettingsForm, 'deliveryFee')}` },
+        { label: 'Lead Times', value: `Pickup ${formValue(agentSettingsForm, 'pickupLeadMinutes')}m / Delivery ${formValue(agentSettingsForm, 'deliveryLeadMinutes')}m` },
+        { label: 'Catering Threshold', value: formValue(agentSettingsForm, 'cateringThresholdPeople') },
+        { label: 'Min Order', value: `${formValue(agentSettingsForm, 'minimumOrderAmount')} ${formValue(agentSettingsForm, 'orderCurrency')}` },
+        { label: 'POS Provider', value: formValue(agentSettingsForm, 'orderPosProvider') },
+        { label: 'Kitchen Channel', value: formValue(agentSettingsForm, 'orderKitchenChannel') },
         { label: 'Repeat Caller Greeting', value: formValue(agentSettingsForm, 'repeatCallerGreeting'), wide: true },
         { label: 'Closed Message', value: formValue(agentSettingsForm, 'closedMessage'), wide: true },
         { label: 'Holiday Message', value: formValue(agentSettingsForm, 'holidayMessage'), wide: true },
@@ -1081,6 +1089,18 @@ document.addEventListener('DOMContentLoaded', () => {
         silencePromptSeconds: agent?.silence_prompt_seconds,
         silenceHangupSeconds: agent?.silence_hangup_seconds,
         backupOpenaiModel: agent?.backup_openai_model,
+        orderReviewRequired: agent?.order_review_required,
+        orderTaxRate: agent?.order_tax_rate,
+        deliveryFee: agent?.delivery_fee,
+        pickupLeadMinutes: agent?.pickup_lead_minutes,
+        deliveryLeadMinutes: agent?.delivery_lead_minutes,
+        cateringThresholdPeople: agent?.catering_threshold_people,
+        minimumOrderAmount: agent?.minimum_order_amount,
+        orderCurrency: agent?.order_currency,
+        orderSmsEnabled: agent?.order_sms_enabled,
+        orderPosProvider: agent?.order_pos_provider,
+        orderPosEndpoint: agent?.order_pos_endpoint,
+        orderKitchenChannel: agent?.order_kitchen_channel,
         notificationPhone: agent?.notification_phone,
         notificationEmail: agent?.notification_email,
         n8nWebhookUrl: agent?.n8n_webhook_url,
@@ -1107,6 +1127,14 @@ document.addEventListener('DOMContentLoaded', () => {
 
       if (agentSettingsForm.elements.notificationEnabled) {
         agentSettingsForm.elements.notificationEnabled.checked = String(agent?.notification_enabled ?? '1') === '1';
+      }
+
+      if (agentSettingsForm.elements.orderReviewRequired) {
+        agentSettingsForm.elements.orderReviewRequired.checked = String(agent?.order_review_required ?? '1') === '1';
+      }
+
+      if (agentSettingsForm.elements.orderSmsEnabled) {
+        agentSettingsForm.elements.orderSmsEnabled.checked = String(agent?.order_sms_enabled ?? '1') === '1';
       }
 
       renderAssistantSummary();
@@ -1325,8 +1353,9 @@ document.addEventListener('DOMContentLoaded', () => {
           <td data-label="Phone">${escapeHtml(order.customer_phone || '-')}</td>
           <td data-label="Order" class="table-main-cell">${escapeHtml(order.order_items || '-')}</td>
           <td data-label="Details">
-            <small>Total: ${escapeHtml(renderMoney(order.order_total))}</small>
-            <small>${escapeHtml(order.special_notes || 'No notes')}</small>
+            <small>Type: ${escapeHtml(order.order_type || 'pickup')}</small>
+            <small>Total: ${escapeHtml(renderMoney(order.order_total ?? order.total_amount))}</small>
+            <small>${escapeHtml(order.customer_address || order.delivery_instructions || order.special_notes || 'No notes')}</small>
           </td>
           <td data-label="Status">${renderStatus(order.order_status)}</td>
           <td data-label="Time">${escapeHtml(formatDateTime(order.created_at))}</td>
@@ -1686,7 +1715,11 @@ document.addEventListener('DOMContentLoaded', () => {
               sizes: item.sizes_json ? JSON.parse(item.sizes_json) : undefined,
               description: item.description || undefined,
               modifiers: item.modifiers || undefined,
-              isAvailable: String(item.is_available) === '1'
+              isAvailable: String(item.is_available) === '1',
+              searchKeywords: item.search_keywords || undefined,
+              allergenNotes: item.allergen_notes || undefined,
+              isFeatured: String(item.is_featured) === '1',
+              modifierPrices: item.modifier_prices_json ? JSON.parse(item.modifier_prices_json) : undefined
             }))
           }));
           menuForm.elements.menuJson.value = JSON.stringify(categories, null, 2);
@@ -1851,6 +1884,8 @@ Fries
         payload.orderEnabled = agentSettingsForm.elements.orderEnabled?.checked || false;
         payload.reservationEnabled = agentSettingsForm.elements.reservationEnabled?.checked || false;
         payload.notificationEnabled = agentSettingsForm.elements.notificationEnabled?.checked || false;
+        payload.orderReviewRequired = agentSettingsForm.elements.orderReviewRequired?.checked || false;
+        payload.orderSmsEnabled = agentSettingsForm.elements.orderSmsEnabled?.checked || false;
         payload.openaiTemperature = 0.3;
         payload.voiceProvider = 'elevenlabs';
         payload.twilioLanguage = payload.languageCode || 'en-CA';

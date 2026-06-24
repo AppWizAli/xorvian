@@ -10,7 +10,9 @@ function compactMenu(menu) {
         const sizes = item.sizes
           ? ` sizes: ${Object.entries(item.sizes).map(([name, value]) => `${name} ${value}`).join(', ')}`
           : '';
-        return `- ${item.name}${price}${sizes}`;
+        const availability = item.isAvailable === false ? ' [sold out]' : '';
+        const featured = item.isFeatured ? ' [popular]' : '';
+        return `- ${item.name}${price}${sizes}${featured}${availability}`;
       });
 
       return [category.name, ...lines].join('\n');
@@ -53,6 +55,13 @@ export function buildAgentInstructions(context) {
   const repeatCaller = repeatCallerGreeting(restaurant, settings, callerHistory);
   const silencePromptSeconds = Math.max(1, Number(settings.silencePromptSeconds || restaurant.silencePromptSeconds || 10));
   const silenceHangupSeconds = Math.max(silencePromptSeconds + 1, Number(settings.silenceHangupSeconds || restaurant.silenceHangupSeconds || 20));
+  const orderReviewRequired = settings.orderReviewRequired !== false;
+  const orderTaxRate = Math.max(0, Number(settings.orderTaxRate || 0));
+  const deliveryFee = Math.max(0, Number(settings.deliveryFee || 0));
+  const pickupLeadMinutes = Math.max(0, Number(settings.pickupLeadMinutes || 20));
+  const deliveryLeadMinutes = Math.max(0, Number(settings.deliveryLeadMinutes || 45));
+  const cateringThresholdPeople = Math.max(0, Number(settings.cateringThresholdPeople || 25));
+  const orderCurrency = settings.orderCurrency || config.defaultCurrency;
 
   return [
     `You are the live phone employee for ${restaurant.name || 'this restaurant'} in Canada.`,
@@ -87,6 +96,12 @@ export function buildAgentInstructions(context) {
     `Reservation policy: ${restaurant.reservationPolicy || ''}`,
     `Menu notes: ${restaurant.menuNotes || ''}`,
     `Knowledge base: ${restaurant.knowledgeBase || ''}`,
+    `Order review required before save: ${orderReviewRequired ? 'yes' : 'no'}`,
+    `Order tax rate: ${orderTaxRate}`,
+    `Delivery fee: ${deliveryFee} ${orderCurrency}`,
+    `Pickup lead minutes: ${pickupLeadMinutes}`,
+    `Delivery lead minutes: ${deliveryLeadMinutes}`,
+    `Catering threshold people: ${cateringThresholdPeople}`,
     closure ? `Current closure message: ${closure}` : '',
     repeatCaller ? `Repeat caller greeting: ${repeatCaller}` : '',
     '',
@@ -104,6 +119,20 @@ export function buildAgentInstructions(context) {
     '- Only create a reservation when name, phone, date, time, and party size are clear.',
     '- Use create_reservation exactly once after the customer confirms the reservation details.',
     '',
+    'Order taking rules:',
+    '- Identify the order type first: pickup, delivery, catering, scheduled, or ASAP.',
+    '- Use the live menu search and cart tools to browse items, add or remove items, update quantities, and capture special requests.',
+    '- Build a live cart and keep updating it as the caller adds, removes, changes, or customizes items.',
+    '- Browse the menu by category, item name, best sellers, or search when the caller is unsure what to order.',
+    '- If a menu item is unavailable, say so and suggest the closest available alternative from the same category.',
+    '- Capture quantity, size, toppings, removals, substitutions, and special requests for every line item.',
+    '- For delivery, collect and confirm full address, apartment or unit, and delivery instructions before finalizing.',
+    '- For pickup, confirm pickup name and phone, then give a realistic ready time.',
+    '- For catering or very large orders, collect date, time, guest count, event type, and budget; escalate if the request is unusually complex.',
+    '- Before placing the order, read back the full cart, price, and fulfillment details and ask for explicit confirmation.',
+    `- If order review is required, call the review tool before placing the order.`,
+    '- Do not place the order until the customer has confirmed the final review.',
+    '',
     'Manager handoff rules:',
     '- Prefer manager callback requests over live transfer unless the situation is critical.',
     '- Before request_handoff, collect or confirm name, callback phone, reason, urgency, and a short summary.',
@@ -115,8 +144,15 @@ export function buildAgentInstructions(context) {
     '- When closed, offer to take an order for tomorrow or note a callback request if needed.',
     '- Do not pretend the restaurant is open if the operating mode says closed, holiday, or private_event.',
     '',
+    'Pricing rules:',
+    '- Use the menu prices and selected sizes to estimate the subtotal.',
+    '- Add configured tax and delivery fee when applicable.',
+    '- If a modifier or add-on price is known from the menu, include it; otherwise mention it as a note and avoid inventing a price.',
+    '- If the order total is uncertain, give the best validated estimate and say staff will verify it before charge capture.',
+    '',
     'After saving:',
     '- Give a confident short confirmation that the order or reservation has been saved.',
+    '- Include order number, estimated prep time, and delivery time when available.',
     '- Do not say staff will confirm routine order details, delivery address, or reservation details after the caller already confirmed them.',
     '- Mention staff follow-up only for special requests, unavailable items, complaints, refunds, or policy exceptions.',
     settings.systemPrompt ? `\nRestaurant custom instructions:\n${settings.systemPrompt}` : '',

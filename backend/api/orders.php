@@ -23,17 +23,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     $noteSql = '';
     $params = [
-        ':status' => $status,
-        ':id' => $orderId,
+      ':status' => $status,
+      ':id' => $orderId,
     ];
 
     if ($customStatus !== '') {
-        $noteSql = ", special_notes = TRIM(CONCAT(COALESCE(special_notes, ''), CHAR(10), 'Manager update: ', :custom_status))";
-        $params[':custom_status'] = $customStatus;
+      $noteSql = ", special_notes = TRIM(CONCAT(COALESCE(special_notes, ''), CHAR(10), 'Manager update: ', :custom_status))";
+      $params[':custom_status'] = $customStatus;
+    }
+
+    $timestampSql = '';
+    if ($status === 'confirmed') {
+        $timestampSql = ', confirmed_at = COALESCE(confirmed_at, NOW())';
+    } elseif ($status === 'cancelled') {
+        $timestampSql = ', cancelled_at = NOW()';
     }
 
     $sql = 'UPDATE orders
-            SET order_status = :status' . $noteSql . '
+            SET order_status = :status' . $timestampSql . $noteSql . '
             WHERE id = :id';
 
     if (!$isAdmin) {
@@ -70,10 +77,26 @@ $stmt = db()->prepare(
             users.email AS account_email,
             orders.customer_name,
             orders.customer_phone,
+            orders.order_type,
             orders.order_status,
             orders.order_total,
+            orders.subtotal,
+            orders.tax_amount,
+            orders.delivery_fee,
+            orders.discount_amount,
+            orders.currency,
+            orders.customer_address,
+            orders.apartment_number,
+            orders.delivery_instructions,
+            orders.scheduled_for,
+            orders.event_type,
+            orders.guest_count,
+            orders.order_payload,
             orders.order_items,
             orders.special_notes,
+            orders.duplicate_hash,
+            orders.pos_status,
+            orders.customer_sms_status,
             orders.source,
             orders.created_at,
             orders.updated_at

@@ -59,10 +59,102 @@ const tools = [
       required: ['name', 'phone', 'reason', 'urgency', 'summary', 'relatedType'],
     },
   },
+  {
+    type: 'function',
+    name: 'search_menu',
+    description: 'Search the restaurant menu by category, item name, or keyword.',
+    parameters: {
+      type: 'object',
+      additionalProperties: false,
+      properties: {
+        query: { type: 'string' },
+        category: { type: 'string' },
+        limit: { type: 'integer' },
+      },
+      required: ['query'],
+    },
+  },
+  {
+    type: 'function',
+    name: 'set_order_details',
+    description: 'Update the current order type, fulfillment, customer, delivery, pickup, schedule, or catering details.',
+    parameters: {
+      type: 'object',
+      additionalProperties: false,
+      properties: {
+        orderType: { type: 'string', enum: ['pickup', 'delivery', 'catering', 'scheduled', 'asap', 'dine_in'] },
+        customerName: { type: 'string' },
+        customerPhone: { type: 'string' },
+        address: { type: 'string' },
+        apartmentNumber: { type: 'string' },
+        instructions: { type: 'string' },
+        scheduledFor: { type: 'string' },
+        eventType: { type: 'string' },
+        guestCount: { type: 'integer' },
+        budget: { type: 'number' },
+      },
+    },
+  },
+  {
+    type: 'function',
+    name: 'order_cart_action',
+    description: 'Add, update, remove, replace, or clear items in the live cart.',
+    parameters: {
+      type: 'object',
+      additionalProperties: false,
+      properties: {
+        action: { type: 'string', enum: ['add', 'update', 'remove', 'replace', 'clear'] },
+        itemId: { type: 'string' },
+        query: { type: 'string' },
+        itemName: { type: 'string' },
+        quantity: { type: 'integer' },
+        size: { type: 'string' },
+        modifiers: { type: 'array', items: { type: 'string' } },
+        specialInstructions: { type: 'string' },
+        category: { type: 'string' },
+      },
+      required: ['action'],
+    },
+  },
+  {
+    type: 'function',
+    name: 'review_order',
+    description: 'Return the current cart summary and pricing for final confirmation.',
+    parameters: {
+      type: 'object',
+      additionalProperties: false,
+      properties: {},
+    },
+  },
+  {
+    type: 'function',
+    name: 'place_order',
+    description: 'Finalize the order only after the customer has confirmed the review.',
+    parameters: {
+      type: 'object',
+      additionalProperties: false,
+      properties: {
+        confirmed: { type: 'boolean' },
+      },
+      required: ['confirmed'],
+    },
+  },
+  {
+    type: 'function',
+    name: 'lookup_recent_order',
+    description: 'Fetch recent customer order history for modification or cancellation conversations.',
+    parameters: {
+      type: 'object',
+      additionalProperties: false,
+      properties: {
+        limit: { type: 'integer' },
+      },
+    },
+  },
 ];
 
-function reasoningConfig() {
-  return config.openaiRealtimeModel === 'gpt-realtime-2' ? { effort: 'low' } : undefined;
+function reasoningConfig(model) {
+  return model && /realtime/i.test(model) && model === 'gpt-realtime-2' ? { effort: 'low' } : undefined;
 }
 
 export class OpenAiRealtime {
@@ -152,7 +244,7 @@ export class OpenAiRealtime {
             },
           },
         },
-        reasoning: reasoningConfig(),
+        reasoning: reasoningConfig(this.model),
         tools,
         tool_choice: 'auto',
       },

@@ -47,8 +47,8 @@ try {
         'INSERT INTO menu_categories (user_id, name, sort_order) VALUES (:user_id, :name, :sort_order)'
     );
     $itemInsert = $pdo->prepare(
-        'INSERT INTO menu_items (category_id, user_id, name, price, sizes_json, description, modifiers, is_available, sort_order)
-         VALUES (:category_id, :user_id, :name, :price, :sizes_json, :description, :modifiers, :is_available, :sort_order)'
+        'INSERT INTO menu_items (category_id, user_id, name, price, sizes_json, description, modifiers, is_available, search_keywords, allergen_notes, is_featured, modifier_prices_json, sort_order)
+         VALUES (:category_id, :user_id, :name, :price, :sizes_json, :description, :modifiers, :is_available, :search_keywords, :allergen_notes, :is_featured, :modifier_prices_json, :sort_order)'
     );
 
     foreach ($categories as $categoryIndex => $category) {
@@ -72,6 +72,8 @@ try {
             }
 
             $sizes = $item['sizes'] ?? null;
+            $modifiers = $item['modifiers'] ?? '';
+            $modifierPrices = $item['modifierPrices'] ?? null;
             $itemInsert->execute([
                 ':category_id' => $categoryId,
                 ':user_id' => $userId,
@@ -79,8 +81,12 @@ try {
                 ':price' => isset($item['price']) && $item['price'] !== '' ? (float)$item['price'] : null,
                 ':sizes_json' => is_array($sizes) ? json_encode($sizes) : null,
                 ':description' => substr((string)($item['description'] ?? ''), 0, 5000),
-                ':modifiers' => substr((string)($item['modifiers'] ?? ''), 0, 5000),
+                ':modifiers' => is_array($modifiers) ? json_encode($modifiers) : substr((string)$modifiers, 0, 5000),
                 ':is_available' => array_key_exists('isAvailable', $item) ? (int)(bool)$item['isAvailable'] : 1,
+                ':search_keywords' => substr((string)($item['searchKeywords'] ?? ''), 0, 255),
+                ':allergen_notes' => substr((string)($item['allergenNotes'] ?? ''), 0, 255),
+                ':is_featured' => !empty($item['isFeatured']) ? 1 : 0,
+                ':modifier_prices_json' => is_array($modifierPrices) ? json_encode($modifierPrices) : null,
                 ':sort_order' => $itemIndex,
             ]);
         }
