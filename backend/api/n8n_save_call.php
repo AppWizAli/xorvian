@@ -43,10 +43,7 @@ if ($existing) {
                       call_type = :call_type,
                       call_status = :call_status,
                       ai_summary = :ai_summary,
-                      transcript = CASE
-                        WHEN :transcript = "" THEN transcript
-                        ELSE :transcript
-                      END,
+                      transcript = COALESCE(NULLIF(:transcript, ""), transcript),
                       duration_seconds = COALESCE(:duration_seconds, duration_seconds)
                   WHERE id = :id';
     db()->prepare($updateSql)->execute([
