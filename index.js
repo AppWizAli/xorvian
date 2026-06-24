@@ -966,10 +966,16 @@ document.addEventListener('DOMContentLoaded', () => {
         { label: 'Agent Name', value: formValue(agentSettingsForm, 'agentName') },
         { label: 'Language', value: formValue(agentSettingsForm, 'languageCode') },
         { label: 'OpenAI Model', value: formValue(agentSettingsForm, 'openaiModel') },
+        { label: 'Temperature', value: formValue(agentSettingsForm, 'openaiTemperature') },
         { label: 'Backup Model', value: formValue(agentSettingsForm, 'backupOpenaiModel') },
         { label: 'Max Tokens', value: formValue(agentSettingsForm, 'openaiMaxTokens') },
         { label: 'Voice ID', value: formValue(agentSettingsForm, 'voiceId') },
         { label: 'Voice Model', value: formValue(agentSettingsForm, 'voiceModel') },
+        { label: 'Reply Style', value: formValue(agentSettingsForm, 'assistantResponseStyle') },
+        { label: 'Min Reply Chars', value: formValue(agentSettingsForm, 'assistantMinResponseChars') },
+        { label: 'Speech Buffer', value: formValue(agentSettingsForm, 'assistantBufferChars') },
+        { label: 'Flush Delay', value: `${formValue(agentSettingsForm, 'assistantFlushDelayMs')}ms` },
+        { label: 'Latency', value: formValue(agentSettingsForm, 'elevenLabsStreamingLatency') },
         { label: 'Orders', value: checkedText(agentSettingsForm, 'orderEnabled') },
         { label: 'Reservations', value: checkedText(agentSettingsForm, 'reservationEnabled') },
         { label: 'Call Mode', value: formValue(agentSettingsForm, 'callMode') },
@@ -1004,6 +1010,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
       renderSummaryGrid(workflowSummaryGrid, [
         { label: 'Twilio Phone', value: assignedNumber || 'Not set' },
+        { label: 'Twilio Language', value: formValue(agentSettingsForm, 'twilioLanguage') || 'en-CA' },
+        { label: 'Output Format', value: formValue(agentSettingsForm, 'outputFormat') || 'ulaw_8000' },
         { label: 'Gateway Webhook Path', value: formValue(agentSettingsForm, 'n8nWebhookPath') },
         { label: 'Optional n8n URL', value: formValue(agentSettingsForm, 'n8nWebhookUrl') },
         { label: 'Order Sheet ID', value: formValue(agentSettingsForm, 'orderSheetId') },
@@ -1107,6 +1115,7 @@ document.addEventListener('DOMContentLoaded', () => {
         agentName: agent?.agent_name,
         languageCode: agent?.language_code,
         openaiModel: agent?.openai_model,
+        openaiTemperature: agent?.openai_temperature,
         openaiMaxTokens: agent?.openai_max_tokens,
         voiceId: agent?.voice_id,
         voiceModel: agent?.voice_model,
@@ -1134,12 +1143,19 @@ document.addEventListener('DOMContentLoaded', () => {
         orderPosProvider: agent?.order_pos_provider,
         orderPosEndpoint: agent?.order_pos_endpoint,
         orderKitchenChannel: agent?.order_kitchen_channel,
+        assistantResponseStyle: agent?.assistant_response_style,
+        assistantMinResponseChars: agent?.assistant_min_response_chars,
+        assistantBufferChars: agent?.assistant_buffer_chars,
+        assistantFlushDelayMs: agent?.assistant_flush_delay_ms,
+        elevenLabsStreamingLatency: agent?.elevenlabs_streaming_latency,
         notificationPhone: agent?.notification_phone,
         notificationEmail: agent?.notification_email,
         n8nWebhookUrl: agent?.n8n_webhook_url,
         n8nWebhookPath: workflow?.n8n_webhook_path,
         orderSheetId: workflow?.order_sheet_id,
         reservationSheetId: workflow?.reservation_sheet_id,
+        twilioLanguage: workflow?.twilio_language,
+        outputFormat: workflow?.output_format,
         gatherMessage: agent?.gather_message,
         closingMessage: agent?.closing_message,
         systemPrompt: agent?.system_prompt
@@ -1180,7 +1196,13 @@ document.addEventListener('DOMContentLoaded', () => {
         'restaurant-defaults': {
           languageCode: 'en-CA',
           openaiModel: 'gpt-realtime-2',
+          openaiTemperature: 0.3,
           voiceModel: 'eleven_flash_v2_5',
+          assistantResponseStyle: 'balanced',
+          assistantMinResponseChars: 60,
+          assistantBufferChars: 120,
+          assistantFlushDelayMs: 300,
+          elevenLabsStreamingLatency: 3,
           notificationChannel: 'sms',
           notificationMinUrgency: 'urgent',
           callMode: 'open',
@@ -1189,6 +1211,8 @@ document.addEventListener('DOMContentLoaded', () => {
           orderCurrency: 'CAD',
           orderPosProvider: 'dashboard',
           orderKitchenChannel: 'dashboard',
+          twilioLanguage: 'en-CA',
+          outputFormat: 'ulaw_8000',
           pickupLeadMinutes: 20,
           deliveryLeadMinutes: 45,
           cateringThresholdPeople: 25
@@ -1196,7 +1220,13 @@ document.addEventListener('DOMContentLoaded', () => {
         'fast-orders': {
           languageCode: 'en-CA',
           openaiModel: 'gpt-realtime-2',
+          openaiTemperature: 0.2,
           voiceModel: 'eleven_flash_v2_5',
+          assistantResponseStyle: 'concise',
+          assistantMinResponseChars: 36,
+          assistantBufferChars: 90,
+          assistantFlushDelayMs: 220,
+          elevenLabsStreamingLatency: 4,
           notificationChannel: 'sms',
           notificationMinUrgency: 'normal',
           callMode: 'open',
@@ -1205,6 +1235,8 @@ document.addEventListener('DOMContentLoaded', () => {
           orderCurrency: 'CAD',
           orderPosProvider: 'dashboard',
           orderKitchenChannel: 'dashboard',
+          twilioLanguage: 'en-CA',
+          outputFormat: 'ulaw_8000',
           pickupLeadMinutes: 15,
           deliveryLeadMinutes: 35,
           cateringThresholdPeople: 20
@@ -1212,7 +1244,13 @@ document.addEventListener('DOMContentLoaded', () => {
         'delivery-first': {
           languageCode: 'en-CA',
           openaiModel: 'gpt-realtime-2',
+          openaiTemperature: 0.3,
           voiceModel: 'eleven_flash_v2_5',
+          assistantResponseStyle: 'balanced',
+          assistantMinResponseChars: 60,
+          assistantBufferChars: 130,
+          assistantFlushDelayMs: 300,
+          elevenLabsStreamingLatency: 3,
           notificationChannel: 'email',
           notificationMinUrgency: 'urgent',
           callMode: 'open',
@@ -1221,13 +1259,15 @@ document.addEventListener('DOMContentLoaded', () => {
           orderCurrency: 'CAD',
           orderPosProvider: 'square',
           orderKitchenChannel: 'email',
+          twilioLanguage: 'en-CA',
+          outputFormat: 'ulaw_8000',
           pickupLeadMinutes: 20,
           deliveryLeadMinutes: 45,
           cateringThresholdPeople: 25
         }
       };
 
-      const preset = presets[presetName];
+        const preset = presets[presetName];
       if (!preset) return;
 
       Object.entries(preset).forEach(([fieldName, value]) => {
@@ -2006,13 +2046,15 @@ Fries
         payload.notificationEnabled = agentSettingsForm.elements.notificationEnabled?.checked || false;
         payload.orderReviewRequired = agentSettingsForm.elements.orderReviewRequired?.checked || false;
         payload.orderSmsEnabled = agentSettingsForm.elements.orderSmsEnabled?.checked || false;
-        payload.openaiTemperature = 0.3;
-        payload.voiceProvider = 'elevenlabs';
-        payload.twilioLanguage = payload.languageCode || 'en-CA';
-        payload.outputFormat = 'ulaw_8000';
-        payload.orderSheetName = 'Sheet1';
-        payload.reservationSheetName = 'Sheet1';
-        payload.cloudinaryFolder = 'xorvian-audio';
+        payload.openaiTemperature = payload.openaiTemperature === '' || payload.openaiTemperature == null
+          ? 0.3
+          : payload.openaiTemperature;
+        payload.voiceProvider = payload.voiceProvider || 'elevenlabs';
+        payload.twilioLanguage = payload.twilioLanguage || payload.languageCode || 'en-CA';
+        payload.outputFormat = payload.outputFormat || 'ulaw_8000';
+        payload.orderSheetName = payload.orderSheetName || 'Sheet1';
+        payload.reservationSheetName = payload.reservationSheetName || 'Sheet1';
+        payload.cloudinaryFolder = payload.cloudinaryFolder || 'xorvian-audio';
 
         try {
           if (agentSettingsMessage) {

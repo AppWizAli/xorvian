@@ -3,9 +3,13 @@ import { config } from './config.js';
 import { logger } from './logger.js';
 
 export class ElevenLabsStream {
-  constructor({ voiceId, modelId, onAudio, callSid }) {
+  constructor({ voiceId, modelId, outputFormat, optimizeStreamingLatency, onAudio, callSid }) {
     this.voiceId = voiceId || config.elevenLabsDefaultVoiceId;
     this.modelId = modelId || config.elevenLabsDefaultModel;
+    this.outputFormat = outputFormat || config.elevenLabsOutputFormat;
+    this.optimizeStreamingLatency = String(
+      optimizeStreamingLatency ?? config.elevenLabsOptimizeStreamingLatency
+    );
     this.onAudio = onAudio;
     this.callSid = callSid;
     this.ws = null;
@@ -18,8 +22,8 @@ export class ElevenLabsStream {
 
     const url = new URL(`wss://api.elevenlabs.io/v1/text-to-speech/${this.voiceId}/stream-input`);
     url.searchParams.set('model_id', this.modelId);
-    url.searchParams.set('output_format', config.elevenLabsOutputFormat);
-    url.searchParams.set('optimize_streaming_latency', config.elevenLabsOptimizeStreamingLatency);
+    url.searchParams.set('output_format', this.outputFormat);
+    url.searchParams.set('optimize_streaming_latency', this.optimizeStreamingLatency);
 
     this.openPromise = new Promise((resolve, reject) => {
       this.ws = new WebSocket(url);
