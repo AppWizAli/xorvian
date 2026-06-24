@@ -15,6 +15,7 @@ $callType = clean_string($data, 'callType', 20);
 $callStatus = clean_string($data, 'callStatus', 20);
 $summary = clean_string($data, 'summary', 5000);
 $transcript = clean_string($data, 'transcript', 50000);
+$transcriptIsEmpty = $transcript === '' ? 1 : 0;
 $durationSeconds = isset($data['durationSeconds']) ? max(0, (int)$data['durationSeconds']) : null;
 
 if ($userId <= 0 || $callSid === '') {
@@ -43,7 +44,7 @@ if ($existing) {
                       call_type = :call_type,
                       call_status = :call_status,
                       ai_summary = :ai_summary,
-                      transcript = COALESCE(NULLIF(:transcript, ""), transcript),
+                      transcript = IF(:transcript_is_empty = 1, transcript, :transcript),
                       duration_seconds = COALESCE(:duration_seconds, duration_seconds)
                   WHERE id = :id';
     db()->prepare($updateSql)->execute([
@@ -51,6 +52,7 @@ if ($existing) {
         ':call_type' => $callType,
         ':call_status' => $callStatus,
         ':ai_summary' => $summary,
+        ':transcript_is_empty' => $transcriptIsEmpty,
         ':transcript' => $transcript,
         ':duration_seconds' => $durationSeconds,
         ':id' => (int)$existing['id'],
